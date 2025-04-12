@@ -19,6 +19,28 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _obscurePass = true;
   bool _obscureConfirm = true;
 
+  InputDecoration customInputDecoration(String label, String hint, {Widget? suffixIcon}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(50),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey),
+        borderRadius: BorderRadius.circular(50),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.teal),
+        borderRadius: BorderRadius.circular(50),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+      suffixIcon: suffixIcon,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,73 +73,55 @@ class _SignUpPageState extends State<SignUpPage> {
 
             // Full Name
             TextField(
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                hintText: "Full Name",
-                prefixIcon: Icon(Icons.person),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
-              ),
+              decoration: customInputDecoration("Full Name", ""),
             ),
-            SizedBox(height: 30),
+            const SizedBox(height: 15),
 
             // Email Input
             TextField(
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                hintText: "Email Address",
-                prefixIcon: Icon(Icons.email),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
-              ),
+              decoration: customInputDecoration("Email Address", ""),
             ),
-            SizedBox(height: 30),
+            const SizedBox(height: 15),
 
-            // Password Input with Toggle Visibility
+            // Password
             TextField(
               obscureText: _obscurePass,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                hintText: "Password",
-                prefixIcon: Icon(Icons.lock),
+              decoration: customInputDecoration(
+                  "Password", "",
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscurePass ? Icons.visibility : Icons.visibility_off,
+                    _obscurePass ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey,
                   ),
                   onPressed: () {
                     setState(() {
                       _obscurePass = !_obscurePass;
                     });
                   },
-                ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                )
               ),
             ),
-            SizedBox(height: 30),
+            const SizedBox(height: 15),
 
             // Confirm Password
             TextField(
               obscureText: _obscureConfirm,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                hintText: "Confirm Password",
-                prefixIcon: Icon(Icons.lock),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscureConfirm ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureConfirm = !_obscureConfirm;
-                    });
-                  },
-                ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide(color: Colors.grey)),
+              decoration: customInputDecoration(
+                  "Confirm Password", "",
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureConfirm = !_obscureConfirm;
+                      });
+                    },
+                  )
               ),
             ),
-            SizedBox(height: 40),
+            const SizedBox(height: 40),
 
             // SignUp Button
             ElevatedButton(

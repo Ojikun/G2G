@@ -18,6 +18,28 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool _obscureText = true;
 
+  InputDecoration customInputDecoration(String label, String hint, {Widget? suffixIcon}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(50),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey),
+        borderRadius: BorderRadius.circular(50),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.teal),
+        borderRadius: BorderRadius.circular(50),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+      suffixIcon: suffixIcon,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,35 +72,26 @@ class _LoginPageState extends State<LoginPage> {
 
             // Email Input
             TextField(
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                hintText: "Email Address",
-                prefixIcon: Icon(Icons.email),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
-              ),
+              decoration: customInputDecoration("Email Address", ""),
             ),
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
 
             // Password Input with Toggle Visibility
             TextField(
               obscureText: _obscureText,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                hintText: "Password",
-                prefixIcon: Icon(Icons.lock),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscureText ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureText = !_obscureText;
-                    });
-                  },
-                ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+              decoration: customInputDecoration(
+                  "Password", "",
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureText ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureText = !_obscureText;
+                      });
+                    },
+                  )
               ),
             ),
 
