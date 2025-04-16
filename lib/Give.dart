@@ -1,25 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: GiveFoodPage(),
-    );
-  }
-}
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/cloudinary_service.dart';
+import 'dart:io';
 
 class DateTextFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     var text = newValue.text;
-
     text = text.replaceAll(RegExp(r'[^0-9]'), '');
 
     final buffer = StringBuffer();
@@ -28,8 +21,10 @@ class DateTextFormatter extends TextInputFormatter {
       buffer.write(text[i]);
     }
 
-    final formatted = buffer.toString().substring(0, buffer.length > 10 ? 10 : buffer.length);
-
+    final formatted = buffer.toString().substring(
+      0,
+      buffer.length > 10 ? 10 : buffer.length,
+    );
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),
@@ -43,40 +38,27 @@ class GiveFoodPage extends StatefulWidget {
 }
 
 class _GiveFoodPageState extends State<GiveFoodPage> {
-  int _selectedIndex = 1;
-
-  final List<String> foodTypes = ['Fruits', 'Vegetables', 'Canned Goods', 'Others'];
+  final List<String> foodTypes = [
+    'Fruits',
+    'Vegetables',
+    'Canned Goods',
+    'Others',
+  ];
   String? selectedFoodType;
   int quantity = 0;
   String selectedOption = '';
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  Widget coloredIcon(String assetPath, bool isSelected, double width, double height) {
-    return ColorFiltered(
-      colorFilter: ColorFilter.mode(
-        isSelected ? Colors.teal : Colors.black,
-        BlendMode.srcIn,
-      ),
-      child: Image.asset(
-        assetPath,
-        width: width,
-        height: height,
-      ),
-    );
-  }
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController expiryController = TextEditingController();
+  final TextEditingController noteController = TextEditingController();
+  final TextEditingController locationController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+  XFile? selectedImage;
 
   InputDecoration customInputDecoration(String label, String hint) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(50),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(50)),
       enabledBorder: OutlineInputBorder(
         borderSide: BorderSide(color: Colors.grey),
         borderRadius: BorderRadius.circular(50),
@@ -91,41 +73,83 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
     );
   }
 
+  Future<void> uploadDonation() async {
+    if (selectedFoodType == null ||
+        nameController.text.isEmpty ||
+        expiryController.text.isEmpty ||
+        quantity <= 0 ||
+        selectedOption.isEmpty ||
+        locationController.text.isEmpty ||
+        selectedImage == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please fill in all fields')));
+      return;
+    }
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('User not logged in')));
+        return;
+      }
+
+      var cloudinaryService = CloudinaryService();
+      String? imageUrl = await cloudinaryService.uploadImage(
+        File(selectedImage!.path),
+      );
+
+      await FirebaseFirestore.instance.collection('donations').add({
+        'foodType': selectedFoodType,
+        'name': nameController.text,
+        'expiry': expiryController.text,
+        'quantity': quantity,
+        'option': selectedOption,
+        'note': noteController.text,
+        'location': locationController.text,
+        'imageUrl': imageUrl,
+        'timestamp': FieldValue.serverTimestamp(),
+        'userId': user.uid,
+        'userEmail': user.email,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Donation uploaded successfully!')),
+      );
+
+      setState(() {
+        selectedFoodType = null;
+        quantity = 0;
+        selectedOption = '';
+        selectedImage = null;
+      });
+
+      nameController.clear();
+      expiryController.clear();
+      noteController.clear();
+      locationController.clear();
+    } catch (e) {
+      print('Upload error: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error uploading donation')));
+    }
+  }
+
+  Future<void> pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        selectedImage = image;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.grey[300],
-        selectedItemColor: Colors.teal,
-        unselectedItemColor: Colors.black,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: [
-          BottomNavigationBarItem(
-            icon: coloredIcon('assets/Home.png', _selectedIndex == 0, 25, 25),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: coloredIcon('assets/Give.png', _selectedIndex == 1, 40, 40),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: coloredIcon('assets/Get.png', _selectedIndex == 2, 40, 40),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: coloredIcon('assets/Trade.png', _selectedIndex == 3, 40, 40),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: coloredIcon('assets/Bag.png', _selectedIndex == 4, 30, 30),
-            label: '',
-          ),
-        ],
-      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
@@ -148,23 +172,39 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
               ],
             ),
             const SizedBox(height: 20),
-            Container(
-              height: 150,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
+            GestureDetector(
+              onTap: pickImage,
+              child: Container(
+                height: 150,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                ),
+                child:
+                    selectedImage == null
+                        ? Center(
+                          child: Icon(
+                            Icons.add_a_photo,
+                            size: 60,
+                            color: Colors.grey,
+                          ),
+                        )
+                        : Image.file(
+                          File(selectedImage!.path),
+                          fit: BoxFit.cover,
+                        ),
               ),
-              child: const Center(child: Icon(Icons.add_a_photo, size: 60, color: Colors.grey)),
             ),
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(
               value: selectedFoodType,
               hint: Text('Food Type'),
-              items: foodTypes.map((type) {
-                return DropdownMenuItem<String>(
-                  value: type,
-                  child: Text(type),
-                );
-              }).toList(),
+              items:
+                  foodTypes.map((type) {
+                    return DropdownMenuItem<String>(
+                      value: type,
+                      child: Text(type),
+                    );
+                  }).toList(),
               onChanged: (value) {
                 setState(() {
                   selectedFoodType = value;
@@ -174,10 +214,12 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
             ),
             const SizedBox(height: 15),
             TextField(
+              controller: nameController,
               decoration: customInputDecoration("Name", "Food Name Here"),
             ),
             const SizedBox(height: 15),
             TextField(
+              controller: expiryController,
               keyboardType: TextInputType.number,
               inputFormatters: [DateTextFormatter()],
               decoration: customInputDecoration("Expiry", "MM/DD/YYYY"),
@@ -204,10 +246,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                           });
                         },
                       ),
-                      Text(
-                        quantity.toString(),
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      Text(quantity.toString(), style: TextStyle(fontSize: 16)),
                       IconButton(
                         icon: Icon(Icons.add_circle_outline),
                         onPressed: () {
@@ -223,7 +262,11 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
             ),
             const SizedBox(height: 15),
             TextField(
-              decoration: customInputDecoration("Note", "Additional details here"),
+              controller: noteController,
+              decoration: customInputDecoration(
+                "Note",
+                "Additional details here",
+              ),
             ),
             const SizedBox(height: 15),
             Row(
@@ -233,12 +276,22 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                     onPressed: () {
                       setState(() {
                         selectedOption = 'DROP-OFF';
+                        locationController.text =
+                            'Batangas State University - Alangilan Campus';
                       });
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedOption == 'DROP-OFF' ? Colors.teal : Colors.white,
-                      foregroundColor: selectedOption == 'DROP-OFF' ? Colors.white : Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      backgroundColor:
+                          selectedOption == 'DROP-OFF'
+                              ? Colors.teal
+                              : Colors.white,
+                      foregroundColor:
+                          selectedOption == 'DROP-OFF'
+                              ? Colors.white
+                              : Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       side: BorderSide(color: Colors.teal),
                     ),
                     child: const Text("DROP-OFF"),
@@ -250,12 +303,21 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                     onPressed: () {
                       setState(() {
                         selectedOption = 'PICKUP';
+                        locationController.text = '';
                       });
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedOption == 'PICKUP' ? Colors.teal : Colors.white,
-                      foregroundColor: selectedOption == 'PICKUP' ? Colors.white : Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      backgroundColor:
+                          selectedOption == 'PICKUP'
+                              ? Colors.teal
+                              : Colors.white,
+                      foregroundColor:
+                          selectedOption == 'PICKUP'
+                              ? Colors.white
+                              : Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       side: BorderSide(color: Colors.teal),
                     ),
                     child: const Text("PICKUP"),
@@ -264,23 +326,28 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
               ],
             ),
             const SizedBox(height: 15),
-            TextField(
-              decoration: customInputDecoration("Location", "Location Here"),
-            ),
+            if (selectedOption == 'PICKUP')
+              TextField(
+                controller: locationController,
+                decoration: customInputDecoration(
+                  "Location",
+                  "Enter pickup location",
+                ),
+              ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                print("Food Type: $selectedFoodType");
-                print("Quantity: $quantity");
-                print("Option: $selectedOption");
-              },
+              onPressed: uploadDonation,
               style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 backgroundColor: Colors.teal,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                minimumSize: const Size(double.infinity, 50),
+                padding: const EdgeInsets.symmetric(vertical: 20),
               ),
-              child: const Text("GIVE", style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Post Donation',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),

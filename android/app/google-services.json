@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "205715691660",
+    "project_id": "g2g-app-88cd1",
+    "storage_bucket": "g2g-app-88cd1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:205715691660:android:18772d9bbd3294bfb403a9",
+        "android_client_info": {
+          "package_name": "com.example.software_design"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "205715691660-47okhsvf1hln7ogt6iea6mr3ntldu6pj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.software_design",
+            "certificate_hash": "a1024f241690bf19a86b91420b44db41a328b440"
+          }
+        },
+        {
+          "client_id": "205715691660-9ngruo391udbm5vul67r485tr706crpn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyL-PKjE6OclRXMpJ_subcdH5MVRA0A5Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "205715691660-9ngruo391udbm5vul67r485tr706crpn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

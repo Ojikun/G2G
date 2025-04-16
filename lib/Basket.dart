@@ -7,10 +7,7 @@ void main() {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: BasketScreen(),
-    );
+    return MaterialApp(debugShowCheckedModeBanner: false, home: BasketScreen());
   }
 }
 
@@ -25,7 +22,7 @@ class _BasketScreenState extends State<BasketScreen> {
     "Lucky Me Pancit Canton Extra Hot",
     "Argentina Corned Beef",
     "Ligo Sardines",
-    "Nescafe Original"
+    "Nescafe Original",
   ];
 
   int get checkedCount => isChecked.where((item) => item).length;
@@ -39,7 +36,10 @@ class _BasketScreenState extends State<BasketScreen> {
           children: [
             // Top bar with back button and center box
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 16,
+              ),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -85,15 +85,14 @@ class _BasketScreenState extends State<BasketScreen> {
                   final canToggle = itemChecked || checkedCount < 3;
 
                   // Styling based on whether it's disabled or not
-                  final containerColor = canToggle
-                      ? Colors.grey[200]
-                      : Colors.grey[400];
+                  final containerColor =
+                      canToggle ? Colors.grey[200] : Colors.grey[400];
 
-                  final imageColor = canToggle
-                      ? Colors.grey[300]
-                      : Colors.black45;
+                  // final imageColor = canToggle
+                  //     ? Colors.grey[300]
+                  //     : Colors.black45;
 
-                  final barColor = Colors.grey[canToggle ? 400 : 600];
+                  // final barColor = Colors.grey[canToggle ? 400 : 600];
 
                   return Container(
                     margin: EdgeInsets.only(bottom: 12),
@@ -106,13 +105,14 @@ class _BasketScreenState extends State<BasketScreen> {
                       children: [
                         Checkbox(
                           value: itemChecked,
-                          onChanged: canToggle
-                              ? (value) {
-                            setState(() {
-                              isChecked[index] = value!;
-                            });
-                          }
-                              : null,
+                          onChanged:
+                              canToggle
+                                  ? (value) {
+                                    setState(() {
+                                      isChecked[index] = value!;
+                                    });
+                                  }
+                                  : null,
                           activeColor: Colors.green,
                           checkColor: Colors.white,
                         ),
@@ -122,7 +122,9 @@ class _BasketScreenState extends State<BasketScreen> {
                           width: 80,
                           decoration: BoxDecoration(
                             image: DecorationImage(
-                              image: AssetImage('assets/food${index + 1}.png'), // Replace with your image assets
+                              image: AssetImage(
+                                'assets/food${index + 1}.png',
+                              ), // Replace with your image assets
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -135,14 +137,14 @@ class _BasketScreenState extends State<BasketScreen> {
                             Text(
                               itemNames[index],
                               style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                             SizedBox(height: 8),
                             // Adding the bar under the item name
                           ],
-                        )
+                        ),
                       ],
                     ),
                   );
@@ -168,7 +170,7 @@ class _BasketScreenState extends State<BasketScreen> {
                   ),
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),

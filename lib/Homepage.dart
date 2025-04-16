@@ -1,18 +1,8 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: HomeScreen(),
-    );
-  }
-}
+import 'Give.dart';
+import 'Get.dart';
+import 'Trade.dart';
+import 'Basket.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -28,23 +18,34 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Widget coloredIcon(String assetPath, bool isSelected, double width, double height) {
+  Widget coloredIcon(
+    String assetPath,
+    bool isSelected,
+    double width,
+    double height,
+  ) {
     return ColorFiltered(
       colorFilter: ColorFilter.mode(
         isSelected ? Colors.teal : Colors.black,
         BlendMode.srcIn,
       ),
-      child: Image.asset(
-        assetPath,
-        width: width,
-        height: height,
-      ),
+      child: Image.asset(assetPath, width: width, height: height),
     );
   }
+
+  // ✅ List of pages for navigation
+  final List<Widget> _pages = [
+    HomePageContent(),
+    GiveFoodPage(),
+    GetScreenPage(),
+    TradeHomePage(),
+    BasketScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.grey[300],
@@ -77,51 +78,58 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: ListView(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Icon(Icons.person),
-                  SizedBox(width: 42),
-                  Text(
-                    "G2G",
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal,
-                    ),
+    );
+  }
+}
+
+// ✅ This is the home page layout as a separate widget
+class HomePageContent extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Icon(Icons.person),
+                SizedBox(width: 42),
+                Text(
+                  "G2G",
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.teal,
                   ),
-                  SizedBox(width: 10),
-                  Row(
-                    children: [
-                      Icon(Icons.mail),
-                      SizedBox(width: 10),
-                      Icon(Icons.notifications),
-                    ],
-                  )
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Container(
-                height: 120,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8.0),
                 ),
+                SizedBox(width: 10),
+                Row(
+                  children: [
+                    Icon(Icons.mail),
+                    SizedBox(width: 10),
+                    Icon(Icons.notifications),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Container(
+              height: 120,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8.0),
               ),
             ),
-            Section(title: 'Give again', itemCount: 2),
-            Section(title: 'Get again', itemCount: 2),
-            Section(title: 'Near Me', itemCount: 2),
-          ],
-        ),
+          ),
+          Section(title: 'Give again', itemCount: 2),
+          Section(title: 'Get again', itemCount: 2),
+          Section(title: 'Near Me', itemCount: 2),
+        ],
       ),
     );
   }
@@ -145,7 +153,10 @@ class Section extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               Text('See all', style: TextStyle(color: Colors.teal)),
             ],
           ),
@@ -170,7 +181,7 @@ class Section extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Image.asset(
-                      'assets/food${index + 1}.png', // Assuming images like item1.png, item2.png
+                      'assets/food${index + 1}.png',
                       width: 150,
                       height: 150,
                     ),

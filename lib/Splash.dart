@@ -1,50 +1,53 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter App',
-      home: SplashScreen(), // Set splash screen as home
-    );
-  }
-}
+import 'Welcome.dart';
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration(seconds: 3), () {
-      // Navigate to the main screen after 3 seconds
-      Navigator.pushReplacement(
+    Timer(const Duration(seconds: 5), () {
+      Navigator.of(
         context,
-        MaterialPageRoute(builder: (context) => MainScreen()), // Replace with your main screen widget
-      );
+      ).pushReplacement(MaterialPageRoute(builder: (context) => WelcomePage()));
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Set background color if needed
+      backgroundColor: Colors.teal[700],
       body: Center(
-        child: Text(
-          'G2G', // Your logo text
-          style: TextStyle(
-            fontSize: 40, // Adjust the font size
-            fontWeight: FontWeight.bold, // Optional for bold
-            color: Colors.blue, // Adjust color of text
-            letterSpacing: 5, // Optional for letter spacing
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.fastfood, color: Colors.white, size: 100),
+            const SizedBox(height: 20),
+            Text(
+              'G2G', // Logo text
+              style: TextStyle(
+                fontSize: 50, // Big text
+                fontWeight: FontWeight.bold, // Bold
+                color: Colors.white, // White text on teal background
+                letterSpacing: 5, // Spaced letters
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              '(Get what you need, give what you can)',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            const CircularProgressIndicator(color: Colors.white),
+          ],
         ),
       ),
     );
@@ -52,22 +55,22 @@ class _SplashScreenState extends State<SplashScreen> {
 }
 
 // Example of the main screen (you can replace it with your actual main screen)
-class MainScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('')),
-      body: Center(
-        child: Text(
-          'G2G', // Your logo text
-          style: TextStyle(
-            fontSize: 50 , // Adjust the font size
-            fontWeight: FontWeight.bold, // Optional for bold
-            color: Colors.teal, // Adjust color of text
-            letterSpacing: 5, // Optional for letter spacing
-          ),
-        ),
-      ),
-    );
-  }
-}
+// class MainScreen extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: Text('')),
+//       body: Center(
+//         child: Text(
+//           'G2G', // Your logo text
+//           style: TextStyle(
+//             fontSize: 50, // Adjust the font size
+//             fontWeight: FontWeight.bold, // Optional for bold
+//             color: Colors.teal, // Adjust color of text
+//             letterSpacing: 5, // Optional for letter spacing
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
