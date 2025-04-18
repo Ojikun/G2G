@@ -96,6 +96,8 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
         return;
       }
 
+      final String username = user.displayName ?? user.email ?? 'Anonymous';
+
       var cloudinaryService = CloudinaryService();
       String? imageUrl = await cloudinaryService.uploadImage(
         File(selectedImage!.path),
@@ -113,6 +115,8 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
         'timestamp': FieldValue.serverTimestamp(),
         'userId': user.uid,
         'userEmail': user.email,
+        'username': username, // ✅ added here
+        'status': 'available',
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
