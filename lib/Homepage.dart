@@ -92,14 +92,15 @@ class HomePageContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: ListView(
+        padding: EdgeInsets.symmetric(horizontal: 20.0),
         children: [
+          // Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Icon(Icons.person),
-                SizedBox(width: 42),
                 Text(
                   "G2G",
                   style: TextStyle(
@@ -108,7 +109,6 @@ class HomePageContent extends StatelessWidget {
                     color: Colors.teal,
                   ),
                 ),
-                SizedBox(width: 10),
                 Row(
                   children: [
                     Icon(Icons.mail),
@@ -119,23 +119,23 @@ class HomePageContent extends StatelessWidget {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              child: Center(
-                child: Text(
-                  'Banner or Announcement',
-                  style: TextStyle(color: Colors.grey),
-                ),
+
+          // Banner
+          Container(
+            height: 120,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            child: Center(
+              child: Text(
+                'Banner or Announcement',
+                style: TextStyle(color: Colors.grey),
               ),
             ),
           ),
+
+          // Sections
           Section(
             title: 'Available',
             query: FirebaseFirestore.instance
@@ -146,7 +146,7 @@ class HomePageContent extends StatelessWidget {
             onSeeAllPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => GetScreenPage()),
+                MaterialPageRoute(builder: (_) => GetScreenPage()),
               );
             },
             emptySectionMessage: 'No available donations.',
@@ -159,7 +159,7 @@ class HomePageContent extends StatelessWidget {
             onEmptySectionPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => GiveFoodPage()),
+                MaterialPageRoute(builder: (_) => GiveFoodPage()),
               );
             },
             emptySectionMessage: 'Give now!',
@@ -172,7 +172,7 @@ class HomePageContent extends StatelessWidget {
             onEmptySectionPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => GetScreenPage()),
+                MaterialPageRoute(builder: (_) => GetScreenPage()),
               );
             },
             emptySectionMessage: 'Get now!',
@@ -201,11 +201,11 @@ class Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
+      padding: const EdgeInsets.only(top: 24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section Header
+          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -221,12 +221,13 @@ class Section extends StatelessWidget {
             ],
           ),
           SizedBox(height: 10),
-          // Firestore data list
+
+          // Firestore Grid
           StreamBuilder<QuerySnapshot>(
             stream: query.snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Text('Something went wrong: ${snapshot.error}');
+                return Text('Error: ${snapshot.error}');
               }
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
@@ -238,7 +239,6 @@ class Section extends StatelessWidget {
                 return GestureDetector(
                   onTap: onEmptySectionPressed,
                   child: Container(
-                    width: double.infinity,
                     height: 120,
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
@@ -269,7 +269,7 @@ class Section extends StatelessWidget {
                 ),
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
-                  var data = docs[index].data() as Map<String, dynamic>;
+                  final data = docs[index].data() as Map<String, dynamic>;
                   final docId = docs[index].id;
                   final foodName = data['name'] ?? 'No Name';
                   final imageUrl = data['imageUrl'] ?? '';
@@ -307,6 +307,7 @@ class Section extends StatelessWidget {
                           Text(
                             foodName,
                             style: TextStyle(fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
