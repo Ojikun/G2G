@@ -1,6 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'Splash.dart'; // starting page (you can change this if needed)
+import 'Homepage.dart'; // your homepage
+import 'Give.dart';
+import 'Get.dart';
+import 'Trade.dart';
+import 'Basket.dart'; // your basket screen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +25,15 @@ class G2GApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      home: SplashScreen(), // starting screen of your app
+      initialRoute: '/', // Initial route
+      routes: {
+        '/': (context) => SplashScreen(), // starting screen of your app
+        '/home': (context) => HomeScreen(),
+        '/give': (context) => GiveFoodPage(),
+        '/get': (context) => GetScreenPage(),
+        '/trade': (context) => TradeApp(), // homepage route
+        '/basket': (context) => BasketScreen(), // basket screen route
+      },
     );
   }
 }
