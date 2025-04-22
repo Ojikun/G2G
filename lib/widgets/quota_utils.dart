@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+const int kWeeklyLimit = 3;
+
 Future<int> getRemainingWeeklyQuantity() async {
   final userId = FirebaseAuth.instance.currentUser!.uid;
 
@@ -20,5 +22,5 @@ Future<int> getRemainingWeeklyQuantity() async {
     (sum, doc) => sum + (doc.data()['quantity'] as int),
   );
 
-  return 3 - weeklyTotal;
+  return kWeeklyLimit - weeklyTotal;
 }
