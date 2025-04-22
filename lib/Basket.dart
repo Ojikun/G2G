@@ -134,7 +134,6 @@ class _BasketScreenState extends State<BasketScreen> {
       return;
     }
 
-    // Show confirmation just like Food.dart
     showGetBasketFlow(context: context, items: selectedItems);
   }
 
@@ -230,12 +229,10 @@ class _BasketScreenState extends State<BasketScreen> {
                               ...items.map((item) {
                                 final foodData =
                                     item['foodData'] as Map<String, dynamic>;
-                                final quantity = item['quantity'];
-                                final index = item['index'];
-                                final foodId = item['foodId'];
                                 final availableQuantity =
                                     item['availableQuantity'];
-
+                                final index = item['index'];
+                                final foodId = item['foodId'];
                                 final isUnavailable = availableQuantity == 0;
                                 final itemChecked = isChecked[index];
                                 final canToggle =
@@ -271,12 +268,10 @@ class _BasketScreenState extends State<BasketScreen> {
                                         .collection('basket')
                                         .doc(foodId)
                                         .delete();
-
                                     setState(() {
                                       isChecked.removeAt(index);
                                       _fetchBasketData();
                                     });
-
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
@@ -338,7 +333,7 @@ class _BasketScreenState extends State<BasketScreen> {
                                               Text(
                                                 isUnavailable
                                                     ? 'Unavailable'
-                                                    : 'Quantity: $quantity',
+                                                    : 'Available: $availableQuantity',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color:
@@ -355,6 +350,81 @@ class _BasketScreenState extends State<BasketScreen> {
                                                   color: Colors.grey[700],
                                                 ),
                                               ),
+                                              SizedBox(height: 8),
+                                              if (!isUnavailable)
+                                                Align(
+                                                  alignment:
+                                                      Alignment.bottomRight,
+                                                  child: Container(
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 6,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey[200],
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            30,
+                                                          ),
+                                                      // boxShadow: [
+                                                      //   BoxShadow(
+                                                      //     color: Colors.black12,
+                                                      //     blurRadius: 4,
+                                                      //     offset: Offset(0, 2),
+                                                      //   ),
+                                                      // ],
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        InkWell(
+                                                          onTap: () {
+                                                            if (item['quantity'] >
+                                                                1) {
+                                                              setState(() {
+                                                                item['quantity']--;
+                                                              });
+                                                            }
+                                                          },
+                                                          child: Icon(
+                                                            Icons
+                                                                .remove_circle_outline,
+                                                            color: Colors.teal,
+                                                            size: 24,
+                                                          ),
+                                                        ),
+                                                        SizedBox(width: 10),
+                                                        Text(
+                                                          '${item['quantity']}',
+                                                          style: TextStyle(
+                                                            fontSize: 18,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                        SizedBox(width: 10),
+                                                        InkWell(
+                                                          onTap: () {
+                                                            if (item['quantity'] <
+                                                                availableQuantity) {
+                                                              setState(() {
+                                                                item['quantity']++;
+                                                              });
+                                                            }
+                                                          },
+                                                          child: Icon(
+                                                            Icons
+                                                                .add_circle_outline,
+                                                            color: Colors.teal,
+                                                            size: 24,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
                                             ],
                                           ),
                                         ),
