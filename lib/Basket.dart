@@ -258,7 +258,7 @@ class _BasketScreenState extends State<BasketScreen> {
                                     child: Icon(
                                       Icons.delete,
                                       color: Colors.white,
-                                      size: 28,
+                                      size: 26,
                                     ),
                                   ),
                                   onDismissed: (direction) {
@@ -333,7 +333,7 @@ class _BasketScreenState extends State<BasketScreen> {
                                               Text(
                                                 isUnavailable
                                                     ? 'Unavailable'
-                                                    : 'Available: $availableQuantity',
+                                                    : 'Available ',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color:
