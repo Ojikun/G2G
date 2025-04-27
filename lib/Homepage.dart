@@ -7,6 +7,7 @@ import 'Get.dart';
 import 'Trade.dart';
 import 'Basket.dart';
 import 'Food.dart';
+import 'Notif.dart'; // Importing Notif.dart for the NotifScreen
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -111,9 +112,27 @@ class HomePageContent extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    Icon(Icons.mail),
+                    IconButton(
+                      icon: Icon(Icons.mail),
+                      onPressed: () {
+                        // Navigate to NotifScreen when the mail icon is pressed
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => NotifPage()),
+                        );
+                      },
+                    ),
                     SizedBox(width: 10),
-                    Icon(Icons.notifications),
+                    IconButton(
+                      icon: Icon(Icons.notifications),
+                      onPressed: () {
+                        // Navigate to NotifScreen when the notification icon is pressed
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => NotifPage()),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ],
