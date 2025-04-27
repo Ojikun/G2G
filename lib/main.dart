@@ -6,6 +6,7 @@ import 'Give.dart';
 import 'Get.dart';
 import 'Trade.dart';
 import 'Basket.dart'; // your basket screen
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,7 @@ class G2GApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    NotificationService.initialize(context);
     return MaterialApp(
       title: 'G2G (Get what you need, give what you can)',
       theme: ThemeData(
@@ -31,7 +33,7 @@ class G2GApp extends StatelessWidget {
         '/home': (context) => HomeScreen(),
         '/give': (context) => GiveFoodPage(),
         '/get': (context) => GetScreenPage(),
-        '/trade': (context) => TradeApp(), // homepage route
+        '/trade': (context) => TradeHomePage(), // homepage route
         '/basket': (context) => BasketScreen(), // basket screen route
       },
     );
