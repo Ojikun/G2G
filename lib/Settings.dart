@@ -1,28 +1,22 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(SettingsApp());
-}
-
 class SettingsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: SettingsScreen(),
-    );
+    return MaterialApp(home: SettingsScreen());
   }
 }
 
 class SettingsScreen extends StatelessWidget {
-  Widget settingsButton(String label) {
+  Widget settingsButton(String label, VoidCallback onPressed) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.teal,
           foregroundColor: Colors.white,
-          minimumSize: Size(double.infinity, 50),
+          minimumSize: const Size(double.infinity, 50),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),
           ),
@@ -36,50 +30,57 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          onPressed: () {
+            Navigator.pop(context); // Go back to the previous screen
+          },
+        ),
+        title: const Text(
+          "Settings",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        backgroundColor: const Color(0xffffc533),
+        elevation: 0, // Remove shadow for a flat look
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Row for back button and teal rectangle
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_back_ios),
-                      onPressed: () {},
-                    ),
-                  ),
-                  Text(
-                    "G2G",
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20), // Space below header row
-              settingsButton("ACCOUNT SETTINGS"),
-              SizedBox(height: 10),
-              settingsButton("PRIVACY SETTINGS"),
-              SizedBox(height: 10),
-              settingsButton("CHAT SETTINGS"),
-              SizedBox(height: 10),
-              settingsButton("NOTIFICATION SETTINGS"),
-              SizedBox(height: 10),
-              settingsButton("TERMS & POLICIES"),
-              SizedBox(height: 10),
-              settingsButton("HELP CENTER"),
-              SizedBox(height: 10),
-              settingsButton("ADD ON"),
-              SizedBox(height: 10),
-              settingsButton("ADD ON"),
-              SizedBox(height: 100), // Space before Log Out
-              settingsButton("LOG OUT"),
+              const SizedBox(height: 20), // Space below the AppBar
+              settingsButton("ACCOUNT SETTINGS", () {
+                // Add functionality for Account Settings
+              }),
+              settingsButton("PRIVACY SETTINGS", () {
+                // Add functionality for Privacy Settings
+              }),
+              settingsButton("CHAT SETTINGS", () {
+                // Add functionality for Chat Settings
+              }),
+              settingsButton("NOTIFICATION SETTINGS", () {
+                // Add functionality for Notification Settings
+              }),
+              settingsButton("TERMS & POLICIES", () {
+                // Add functionality for Terms & Policies
+              }),
+              settingsButton("HELP CENTER", () {
+                // Add functionality for Help Center
+              }),
+              settingsButton("ADD ON", () {
+                // Add functionality for Add On
+              }),
+              const Spacer(), // Push the Log Out button to the bottom
+              settingsButton("LOG OUT", () {
+                // Add functionality for Log Out
+              }),
             ],
           ),
         ),

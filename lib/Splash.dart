@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'Welcome.dart';
+import 'Homepage.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,64 +13,32 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 5), () {
+    Timer(const Duration(seconds: 10), () {
       Navigator.of(
         context,
-      ).pushReplacement(MaterialPageRoute(builder: (context) => WelcomePage()));
+      ).pushReplacement(MaterialPageRoute(builder: (context) => HomeScreen()));
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.teal[700],
+      backgroundColor: Color(0xFFF0F9F8),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.fastfood, color: Colors.white, size: 100),
-            const SizedBox(height: 20),
-            Text(
-              'G2G', // Logo text
-              style: TextStyle(
-                fontSize: 50, // Big text
-                fontWeight: FontWeight.bold, // Bold
-                color: Colors.white, // White text on teal background
-                letterSpacing: 5, // Spaced letters
-              ),
+            // 🛠 Use Image.asset instead of Icon
+            Image.asset(
+              'assets/logo.png',
+              width: 150, // You can adjust size
+              height: 100,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 10),
-            const Text(
-              '(Get what you need, give what you can)',
-              style: TextStyle(color: Colors.white, fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            const CircularProgressIndicator(color: Colors.white),
+            // const CircularProgressIndicator(color: Colors.teal),
           ],
         ),
       ),
     );
   }
 }
-
-// Example of the main screen (you can replace it with your actual main screen)
-// class MainScreen extends StatelessWidget {
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: Text('')),
-//       body: Center(
-//         child: Text(
-//           'G2G', // Your logo text
-//           style: TextStyle(
-//             fontSize: 50, // Adjust the font size
-//             fontWeight: FontWeight.bold, // Optional for bold
-//             color: Colors.teal, // Adjust color of text
-//             letterSpacing: 5, // Optional for letter spacing
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }

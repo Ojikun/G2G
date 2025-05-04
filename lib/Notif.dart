@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'TradeRequestDetail.dart';
 
 class NotifPage extends StatefulWidget {
   const NotifPage({Key? key}) : super(key: key);
@@ -11,137 +12,121 @@ class NotifPage extends StatefulWidget {
 
 class _NotifPageState extends State<NotifPage> {
   final currentUser = FirebaseAuth.instance.currentUser;
-  late Future<List<DocumentSnapshot>> _userTradePosts;
-
-  @override
-  void initState() {
-    super.initState();
-    _userTradePosts = fetchUserTradePosts();
-  }
-
-  Future<List<DocumentSnapshot>> fetchUserTradePosts() async {
-    if (currentUser == null) return [];
-    final tradesSnapshot =
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .where('uid', isEqualTo: currentUser!.uid)
-            .get();
-    return tradesSnapshot.docs;
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
-      body: FutureBuilder<List<DocumentSnapshot>>(
-        future: _userTradePosts,
-        builder: (context, tradePostsSnapshot) {
-          if (tradePostsSnapshot.connectionState == ConnectionState.waiting) {
+      appBar: AppBar(
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Notifications',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        backgroundColor: const Color(0xffffc533),
+        elevation: 0,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream:
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser?.uid)
+                .collection('notifications')
+                .orderBy('timestamp', descending: true)
+                .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!tradePostsSnapshot.hasData || tradePostsSnapshot.data!.isEmpty) {
-            return const Center(child: Text('You have no trade posts.'));
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No notifications yet.'));
           }
 
-          final tradePosts = tradePostsSnapshot.data!;
+          final notifications = snapshot.data!.docs;
 
           return ListView.builder(
-            itemCount: tradePosts.length,
+            itemCount: notifications.length,
             itemBuilder: (context, index) {
-              final post = tradePosts[index];
-              final postId = post.id;
+              final notification =
+                  notifications[index].data() as Map<String, dynamic>;
+              final isTradeRequest =
+                  notification['title'] == 'New Trade Request';
 
-              return StreamBuilder<QuerySnapshot>(
-                stream:
-                    FirebaseFirestore.instance
-                        .collection('trades')
-                        .doc(postId)
-                        .collection('tradeRequests')
-                        .snapshots(),
-                builder: (context, requestsSnapshot) {
-                  if (requestsSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+              return ListTile(
+                leading: Stack(
+                  children: [
+                    Icon(
+                      isTradeRequest ? Icons.swap_horiz : Icons.check_circle,
+                      color: const Color(0xffffc533),
+                      size: 30,
+                    ),
+                    if (!(notification['isRead'] ?? false))
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                title: Text(notification['title'] ?? 'Notification'),
+                subtitle: Text(
+                  notification['body'] ?? '',
+                  style: TextStyle(
+                    fontWeight:
+                        (notification['isRead'] ?? false)
+                            ? FontWeight.normal
+                            : FontWeight.bold,
+                  ),
+                ),
+                trailing: Text(
+                  _formatTimestamp(notification['timestamp']),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                onTap: () async {
+                  // Mark notification as read
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(currentUser!.uid)
+                      .collection('notifications')
+                      .doc(notifications[index].id)
+                      .update({'isRead': true});
+
+                  // Navigate to trade request detail page if applicable
+                  if (notification['tradePostId'] != null &&
+                      notification['requestId'] != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => TradeRequestDetailPage(
+                              postId: notification['tradePostId'],
+                              requestId: notification['requestId'],
+                            ),
+                      ),
+                    );
+                  } else {
+                    // Show an error message if details are missing
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Invalid notification details.'),
+                      ),
+                    );
                   }
-
-                  if (!requestsSnapshot.hasData ||
-                      requestsSnapshot.data!.docs.isEmpty) {
-                    return const SizedBox.shrink(); // No requests
-                  }
-
-                  final tradeRequests = requestsSnapshot.data!.docs;
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children:
-                        tradeRequests.map((request) {
-                          final data = request.data() as Map<String, dynamic>;
-
-                          return ListTile(
-                            leading: Stack(
-                              children: [
-                                const Icon(
-                                  Icons.swap_horiz,
-                                  color: Colors.blueAccent,
-                                  size: 30,
-                                ),
-                                if (!(data['isRead'] ?? false))
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            title: const Text('Trade'),
-                            subtitle: Text(
-                              '${data['name'] ?? 'Someone'} wants to trade with you!',
-                              style: TextStyle(
-                                fontWeight:
-                                    (data['isRead'] ?? false)
-                                        ? FontWeight.normal
-                                        : FontWeight.bold,
-                              ),
-                            ),
-                            trailing: Text(
-                              _formatTimestamp(data['timestamp']),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            onTap: () async {
-                              // Mark notification as read
-                              await FirebaseFirestore.instance
-                                  .collection('trades')
-                                  .doc(postId)
-                                  .collection('tradeRequests')
-                                  .doc(request.id)
-                                  .update({'isRead': true});
-
-                              // Navigate to detailed view page
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => TradeRequestDetailPage(
-                                        tradeData: data,
-                                        postId: postId,
-                                        requestId: request.id,
-                                      ),
-                                ),
-                              );
-                            },
-                          );
-                        }).toList(),
-                  );
                 },
               );
             },
@@ -155,61 +140,5 @@ class _NotifPageState extends State<NotifPage> {
     if (timestamp == null) return '';
     final date = timestamp.toDate();
     return '${date.month}/${date.day}/${date.year}';
-  }
-}
-
-// Placeholder for detail page (create this later)
-class TradeRequestDetailPage extends StatelessWidget {
-  final Map<String, dynamic> tradeData;
-  final String postId;
-  final String requestId;
-
-  const TradeRequestDetailPage({
-    Key? key,
-    required this.tradeData,
-    required this.postId,
-    required this.requestId,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Trade Request Details')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Item: ${tradeData['name'] ?? 'Unknown'}',
-              style: const TextStyle(fontSize: 20),
-            ),
-            const SizedBox(height: 10),
-            Text('Description: ${tradeData['tradeDescription'] ?? ''}'),
-            const SizedBox(height: 10),
-            Text('Requested by: ${tradeData['requesterName'] ?? 'Someone'}'),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    // Accept logic here
-                  },
-                  child: const Text('Accept'),
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    // Decline logic here
-                  },
-                  child: const Text('Decline'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

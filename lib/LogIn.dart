@@ -122,7 +122,12 @@ class _LoginPageState extends State<LoginPage> {
                 height: 150,
                 width: 280,
                 color: Colors.white70,
-                child: Icon(Icons.image, size: 50, color: Colors.grey),
+                child: Image.asset(
+                  'assets/logo.png',
+                  width: 150, // You can adjust size
+                  height: 100,
+                  fit: BoxFit.contain,
+                ),
               ),
               SizedBox(height: 20),
               Text(

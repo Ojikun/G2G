@@ -71,7 +71,7 @@ void showGetBasketFlow({
                   "Confirm Food Items",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.teal[800],
+                    color: Color(0xffffc533),
                   ),
                 ),
               ],
@@ -151,17 +151,17 @@ void showGetBasketFlow({
             actionsPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             actions: [
               TextButton.icon(
-                label: Text("Cancel"),
+                label: Text("Cancel", style: TextStyle(color: Colors.black)),
                 onPressed: () => Navigator.of(ctx).pop(false),
               ),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
+                  backgroundColor: Color(0xffffc533),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                label: Text("Claim"),
+                label: Text("Claim", style: TextStyle(color: Colors.black)),
                 onPressed: () => Navigator.of(ctx).pop(true),
               ),
             ],
@@ -204,6 +204,14 @@ void showGetBasketFlow({
         });
 
     claimedItems.add(item);
+
+    // Remove the item from the basket
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('basket')
+        .doc(item.foodId)
+        .delete();
   }
 
   if (claimedItems.isEmpty) return;
@@ -227,13 +235,15 @@ void _showGroupedTimerOverlay(
   List<GetFoodItem> items,
 ) {
   final bottomOffset =
-      105.0 + (activeOverlayCount * 90); // Stack overlays 90px apart.
+      105.0 + (activeOverlayCount * 100); // Stack overlays 90px apart.
   activeOverlayCount++; // Increment overlay count.
 
   final Duration oneHour = Duration(hours: 1);
   final DateTime endTime = DateTime.now().add(oneHour);
   Timer? timer;
   late OverlayEntry entry;
+
+  bool isExpanded = true; // Track whether the overlay is expanded or collapsed
 
   void removeOverlay() {
     timer?.cancel();
@@ -297,71 +307,98 @@ void _showGroupedTimerOverlay(
                   .toString()
                   .padLeft(2, '0');
 
-              return Container(
-                padding: EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 12,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // Left side: Food info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "🎉 You got ${items.map((item) => item.quantity).join(", ")} ${items.map((item) => item.foodName).join(", ")}!",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "📍 Get at $location",
-                            style: TextStyle(fontSize: 14),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+              return GestureDetector(
+                onTap: () {
+                  // Toggle between expanded and collapsed states
+                  setState(() {
+                    isExpanded = !isExpanded;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
+                  padding: EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 12,
+                        offset: Offset(0, 5),
                       ),
-                    ),
-                    SizedBox(width: 12),
-                    // Right side: Timer and Done button
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "⏳ $minutes:$seconds",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal,
+                    ],
+                  ),
+                  child:
+                      isExpanded
+                          ? Row(
+                            children: [
+                              // Left side: Food info
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "🎉 You got ${items.map((item) => item.quantity).join(", ")} ${items.map((item) => item.foodName).join(", ")}!",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      "📍 Get at $location",
+                                      style: TextStyle(fontSize: 14),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              // Right side: Timer and Done button
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "⏳ $minutes:$seconds",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xffffc533),
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () async {
+                                      await updateQuantitiesInFirestore();
+                                      removeOverlay();
+                                    },
+                                    icon: Icon(
+                                      Icons.check_circle_outline,
+                                      color: Color(0xffffc533),
+                                    ),
+                                    label: Text(
+                                      "Done",
+                                      style: TextStyle(
+                                        color: Color(0xffffc533),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                          : Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "📍 $location",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Icon(Icons.expand_more, color: Color(0xffffc533)),
+                            ],
                           ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () async {
-                            await updateQuantitiesInFirestore();
-                            removeOverlay();
-                          },
-                          icon: Icon(
-                            Icons.check_circle_outline,
-                            color: Colors.teal,
-                          ),
-                          label: Text(
-                            "Done",
-                            style: TextStyle(color: Colors.teal),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               );
             },

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'widgets/get_food_flow.dart'; // Assuming your showGetBasketFlow lives here
+import 'Homepage.dart'; // Assuming your HomeScreen lives here
 
 class BasketScreen extends StatefulWidget {
   @override
@@ -67,29 +68,21 @@ class _BasketScreenState extends State<BasketScreen> {
             .then((foodDoc) {
               if (foodDoc.exists) {
                 final foodData = foodDoc.data() as Map<String, dynamic>;
-                final donorId = foodData['userId'];
+                final donorName =
+                    foodData['username'] ?? 'Unknown'; // Use username field
                 final availableQuantity = foodData['quantity'] ?? 0;
 
-                return FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(donorId)
-                    .get()
-                    .then((donorDoc) {
-                      final donorData = donorDoc.data();
-                      final donorName = donorData?['name'] ?? 'Unknown';
+                if (!tempGroupedItems.containsKey(donorName)) {
+                  tempGroupedItems[donorName] = [];
+                }
 
-                      if (!tempGroupedItems.containsKey(donorName)) {
-                        tempGroupedItems[donorName] = [];
-                      }
-
-                      tempGroupedItems[donorName]!.add({
-                        'foodId': foodId,
-                        'foodData': foodData,
-                        'quantity': basketQuantity,
-                        'availableQuantity': availableQuantity,
-                        'index': i,
-                      });
-                    });
+                tempGroupedItems[donorName]!.add({
+                  'foodId': foodId,
+                  'foodData': foodData,
+                  'quantity': basketQuantity,
+                  'availableQuantity': availableQuantity,
+                  'index': i,
+                });
               }
             }),
       );
@@ -135,6 +128,9 @@ class _BasketScreenState extends State<BasketScreen> {
     }
 
     showGetBasketFlow(context: context, items: selectedItems);
+
+    // Refresh the basket data after the flow completes
+    _fetchBasketData();
   }
 
   @override
@@ -145,56 +141,28 @@ class _BasketScreenState extends State<BasketScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context); // Go back to the previous screen
+            } else {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+                (route) => false, // Remove all previous routes
+              );
+            }
+          },
+        ),
+        title: Text('My Basket', style: TextStyle(color: Colors.black)),
+        backgroundColor: Color(0xffffc533), // Updated AppBar color
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 16,
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_back_ios),
-                      onPressed:
-                          () =>
-                              Navigator.pushReplacementNamed(context, '/home'),
-                    ),
-                  ),
-                  Text(
-                    "G2G",
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // "My Basket" label
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0, bottom: 10),
-              child: Row(
-                children: [
-                  Image.asset('assets/Bag.png', width: 24, height: 24),
-                  SizedBox(width: 10),
-                  Text(
-                    "My Basket",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 20),
-
-            // Basket items
             Expanded(
               child:
                   isLoading
@@ -222,7 +190,7 @@ class _BasketScreenState extends State<BasketScreen> {
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.teal,
+                                    color: Colors.black,
                                   ),
                                 ),
                               ),
@@ -249,29 +217,34 @@ class _BasketScreenState extends State<BasketScreen> {
                                 return Dismissible(
                                   key: Key(foodId),
                                   direction: DismissDirection.endToStart,
-                                  background: Container(
-                                    alignment: Alignment.centerRight,
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                    ),
-                                    color: Colors.red,
-                                    child: Icon(
-                                      Icons.delete,
-                                      color: Colors.white,
-                                      size: 26,
+                                  background: SizedBox.expand(
+                                    // Ensures the red background matches the item's height
+                                    child: Container(
+                                      alignment: Alignment.centerRight,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                      ),
+                                      color: Colors.red,
+                                      child: Icon(
+                                        Icons.delete,
+                                        color: Colors.white,
+                                        size: 26,
+                                      ),
                                     ),
                                   ),
-                                  onDismissed: (direction) {
-                                    FirebaseFirestore.instance
+                                  onDismissed: (direction) async {
+                                    // Remove the item from Firestore
+                                    await FirebaseFirestore.instance
                                         .collection('users')
                                         .doc(userId)
                                         .collection('basket')
                                         .doc(foodId)
                                         .delete();
-                                    setState(() {
-                                      isChecked.removeAt(index);
-                                      _fetchBasketData();
-                                    });
+
+                                    // Refresh the basket data
+                                    _fetchBasketData();
+
+                                    // Show a confirmation message
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
@@ -287,148 +260,76 @@ class _BasketScreenState extends State<BasketScreen> {
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     padding: EdgeInsets.all(12),
-                                    child: Row(
-                                      children: [
-                                        Checkbox(
-                                          value: itemChecked,
-                                          onChanged:
-                                              canToggle
-                                                  ? (value) {
-                                                    setState(() {
-                                                      isChecked[index] = value!;
-                                                    });
-                                                  }
-                                                  : null,
-                                          activeColor: Colors.green,
-                                          checkColor: Colors.white,
-                                        ),
-                                        foodData['imageUrl'] != null
-                                            ? Container(
-                                              height: 80,
-                                              width: 80,
-                                              decoration: BoxDecoration(
-                                                image: DecorationImage(
-                                                  image: NetworkImage(
-                                                    foodData['imageUrl'],
-                                                  ),
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                            )
-                                            : Icon(Icons.fastfood, size: 80),
-                                        SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                foodData['name'] ?? 'No Name',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                isUnavailable
-                                                    ? 'Unavailable'
-                                                    : 'Available ',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color:
-                                                      isUnavailable
-                                                          ? Colors.red
-                                                          : Colors.black,
-                                                ),
-                                              ),
-                                              SizedBox(height: 4),
-                                              Text(
-                                                'Location: ${foodData['location'] ?? 'N/A'}',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey[700],
-                                                ),
-                                              ),
-                                              SizedBox(height: 8),
-                                              if (!isUnavailable)
-                                                Align(
-                                                  alignment:
-                                                      Alignment.bottomRight,
-                                                  child: Container(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 6,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey[200],
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            30,
-                                                          ),
-                                                      // boxShadow: [
-                                                      //   BoxShadow(
-                                                      //     color: Colors.black12,
-                                                      //     blurRadius: 4,
-                                                      //     offset: Offset(0, 2),
-                                                      //   ),
-                                                      // ],
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        InkWell(
-                                                          onTap: () {
-                                                            if (item['quantity'] >
-                                                                1) {
-                                                              setState(() {
-                                                                item['quantity']--;
-                                                              });
-                                                            }
-                                                          },
-                                                          child: Icon(
-                                                            Icons
-                                                                .remove_circle_outline,
-                                                            color: Colors.teal,
-                                                            size: 24,
-                                                          ),
-                                                        ),
-                                                        SizedBox(width: 10),
-                                                        Text(
-                                                          '${item['quantity']}',
-                                                          style: TextStyle(
-                                                            fontSize: 18,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                        SizedBox(width: 10),
-                                                        InkWell(
-                                                          onTap: () {
-                                                            if (item['quantity'] <
-                                                                availableQuantity) {
-                                                              setState(() {
-                                                                item['quantity']++;
-                                                              });
-                                                            }
-                                                          },
-                                                          child: Icon(
-                                                            Icons
-                                                                .add_circle_outline,
-                                                            color: Colors.teal,
-                                                            size: 24,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
+                                    child: IntrinsicHeight(
+                                      child: Row(
+                                        children: [
+                                          Checkbox(
+                                            value: itemChecked,
+                                            onChanged:
+                                                canToggle
+                                                    ? (value) {
+                                                      setState(() {
+                                                        isChecked[index] =
+                                                            value!;
+                                                      });
+                                                    }
+                                                    : null,
+                                            activeColor: Color(0xffffc533),
+                                            checkColor: Colors.white,
                                           ),
-                                        ),
-                                      ],
+                                          foodData['imageUrl'] != null
+                                              ? Container(
+                                                height: 80,
+                                                width: 80,
+                                                decoration: BoxDecoration(
+                                                  image: DecorationImage(
+                                                    image: NetworkImage(
+                                                      foodData['imageUrl'],
+                                                    ),
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                                ),
+                                              )
+                                              : Icon(Icons.fastfood, size: 80),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  foodData['name'] ?? 'No Name',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  isUnavailable
+                                                      ? 'Unavailable'
+                                                      : 'Available',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color:
+                                                        isUnavailable
+                                                            ? Colors.red
+                                                            : Colors.black,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  'Location: ${foodData['location'] ?? 'N/A'}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey[700],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );
@@ -440,19 +341,31 @@ class _BasketScreenState extends State<BasketScreen> {
             ),
 
             // GET button
+            // GET button
             Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 100,
-                child: ElevatedButton(
-                  onPressed: _handleGet,
-                  child: Text("GET"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+              padding: const EdgeInsets.only(
+                bottom: 16.0,
+              ), // Add space below the button
+              child: Align(
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 150, // Set a fixed width for the button
+                  child: ElevatedButton(
+                    onPressed: _handleGet, // Original functionality
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xffffc533),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          12,
+                        ), // Match the provided style
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 14), // Match size
+                    ),
+                    child: Text(
+                      "GET",
+                      style: TextStyle(
+                        color: Colors.black,
+                      ), // Match the provided style
                     ),
                   ),
                 ),

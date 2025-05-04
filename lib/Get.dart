@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:ui';
 
 import 'Food.dart';
+import 'Homepage.dart';
 
 class GetScreenPage extends StatefulWidget {
   @override
@@ -28,34 +30,31 @@ class _GetScreenPageState extends State<GetScreenPage> {
     final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => HomeScreen()),
+              (route) => false, // Remove all previous routes
+            );
+          },
+        ),
+        title: Text('Get Donations', style: TextStyle(color: Colors.black)),
+        backgroundColor: Color(0xffffc533),
+        centerTitle: true,
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
-          child: Column(
-            children: [
-              // Top row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Icon(Icons.person),
-                  SizedBox(width: 42),
-                  Text(
-                    "G2G",
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal,
-                    ),
-                  ),
-                  SizedBox(width: 40),
-                  Icon(Icons.mail),
-                ],
+        child: Column(
+          children: [
+            // Search Row
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 16,
               ),
-
-              SizedBox(height: 20),
-
-              // Search Row
-              Row(
+              child: Row(
                 children: [
                   // Search bar
                   Expanded(
@@ -69,14 +68,31 @@ class _GetScreenPageState extends State<GetScreenPage> {
                       decoration: InputDecoration(
                         hintText: 'Search',
                         prefixIcon: Icon(Icons.search),
-                        suffixIcon: IconButton(
-                          icon: Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
+                        suffixIcon: Row(
+                          mainAxisSize:
+                              MainAxisSize
+                                  .min, // Ensure the row takes minimal space
+                          children: [
+                            // Clear (x) button
+                            if (_searchController.text.isNotEmpty)
+                              IconButton(
+                                icon: Icon(Icons.clear, color: Colors.grey),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                },
+                              ),
+
+                            // Filter icon
+                            IconButton(
+                              icon: Icon(Icons.tune, color: Color(0xffffc533)),
+                              onPressed: () {
+                                _showFilterDropdown(context);
+                              },
+                            ),
+                          ],
                         ),
                         filled: true,
                         fillColor: Colors.white,
@@ -85,132 +101,116 @@ class _GetScreenPageState extends State<GetScreenPage> {
                           horizontal: 20,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide(color: Colors.grey),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide(color: Colors.grey),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide(color: Colors.black),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey),
                         ),
                       ),
                     ),
-                  ),
-
-                  SizedBox(width: 10),
-
-                  // Filter Icon
-                  IconButton(
-                    icon: Icon(Icons.filter_alt, color: Colors.teal),
-                    onPressed: () {
-                      _showFilterDropdown(context);
-                    },
                   ),
                 ],
               ),
+            ),
 
-              // Category Selection (below search box)
-              if (_selectedField != 'All')
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Filter by: ${_getFilterText(_selectedField)}',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+            // Category Selection (below search box)
+            if (_selectedField != 'All')
+              Padding(
+                padding: const EdgeInsets.only(left: 20.0, bottom: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Filter by: ${_getFilterText(_selectedField)}',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
+              ),
 
-              SizedBox(height: 20),
+            // Scrollable Grid
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('donations')
+                        .where('status', isEqualTo: 'available')
+                        .where('userId', isNotEqualTo: currentUserId)
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Something went wrong.'));
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
 
-              // Grid
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream:
-                      FirebaseFirestore.instance
-                          .collection('donations')
-                          .where('status', isEqualTo: 'available')
-                          .where('userId', isNotEqualTo: currentUserId)
-                          .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Something went wrong.'));
-                    }
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator());
-                    }
+                  final docs = snapshot.data!.docs;
 
-                    final docs = snapshot.data!.docs;
-
-                    if (docs.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'No available donations.',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal,
-                          ),
+                  if (docs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No available donations.',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xffffc533),
                         ),
-                      );
-                    }
+                      ),
+                    );
+                  }
 
-                    // Filter docs based on search query and selected field
-                    final filteredDocs =
-                        docs.where((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
+                  // Filter docs based on search query and selected field
+                  final filteredDocs =
+                      docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
 
-                          // If search query is empty — no filtering needed
-                          if (_searchQuery.isEmpty) return true;
+                        // If search query is empty — no filtering needed
+                        if (_searchQuery.isEmpty) return true;
 
-                          if (_selectedField == 'All') {
-                            // Search in multiple fields
-                            return (data['name']?.toString().toLowerCase() ??
-                                        '')
-                                    .contains(_searchQuery) ||
-                                (data['foodType']?.toString().toLowerCase() ??
-                                        '')
-                                    .contains(_searchQuery) ||
-                                (data['location']?.toString().toLowerCase() ??
-                                        '')
-                                    .contains(_searchQuery) ||
-                                (data['expiry']?.toString().toLowerCase() ?? '')
-                                    .contains(_searchQuery) ||
-                                (data['username']?.toString().toLowerCase() ??
-                                        '')
-                                    .contains(_searchQuery);
-                          } else {
-                            // Search in selected field only
-                            final fieldValue =
-                                data[_selectedField]
-                                    ?.toString()
-                                    .toLowerCase() ??
-                                '';
-                            return fieldValue.contains(_searchQuery);
-                          }
-                        }).toList();
+                        if (_selectedField == 'All') {
+                          // Search in multiple fields
+                          return (data['name']?.toString().toLowerCase() ?? '')
+                                  .contains(_searchQuery) ||
+                              (data['foodType']?.toString().toLowerCase() ?? '')
+                                  .contains(_searchQuery) ||
+                              (data['location']?.toString().toLowerCase() ?? '')
+                                  .contains(_searchQuery) ||
+                              (data['expiry']?.toString().toLowerCase() ?? '')
+                                  .contains(_searchQuery) ||
+                              (data['username']?.toString().toLowerCase() ?? '')
+                                  .contains(_searchQuery);
+                        } else {
+                          // Search in selected field only
+                          final fieldValue =
+                              data[_selectedField]?.toString().toLowerCase() ??
+                              '';
+                          return fieldValue.contains(_searchQuery);
+                        }
+                      }).toList();
 
-                    if (filteredDocs.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'No matching donations found.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey,
-                          ),
+                  if (filteredDocs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No matching donations found.',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey,
                         ),
-                      );
-                    }
+                      ),
+                    );
+                  }
 
-                    return GridView.builder(
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                    ), // Add horizontal margin
+                    child: GridView.builder(
                       physics: BouncingScrollPhysics(),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
@@ -235,50 +235,72 @@ class _GetScreenPageState extends State<GetScreenPage> {
                             );
                           },
                           child: Container(
-                            padding: EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8.0),
+                              border: Border.all(
+                                color: Colors.grey, // Border color
+                                width: 0.5, // Border width
+                              ),
+                              borderRadius: BorderRadius.circular(16.0),
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child:
-                                      imageUrl.isNotEmpty
-                                          ? Image.network(
-                                            imageUrl,
-                                            fit: BoxFit.cover,
-                                            width: double.infinity,
-                                          )
-                                          : Icon(
-                                            Icons.fastfood,
-                                            size: 60,
-                                            color: Colors.teal,
-                                          ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  name,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16.0),
+                              child: Stack(
+                                children: [
+                                  // Background image
+                                  Positioned.fill(
+                                    child:
+                                        imageUrl.isNotEmpty
+                                            ? Image.network(
+                                              imageUrl,
+                                              fit: BoxFit.cover,
+                                            )
+                                            : Container(
+                                              color: Color(0xffffc533),
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.fastfood,
+                                                  size: 60,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+
+                                  // Solid overlay with text at the bottom
+                                  Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      color: Colors.grey.withOpacity(0.8),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      child: Text(
+                                        name,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

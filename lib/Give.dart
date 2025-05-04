@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'services/cloudinary_service.dart';
 import 'dart:io';
+import 'Homepage.dart';
 
 class DateTextFormatter extends TextInputFormatter {
   @override
@@ -38,6 +39,10 @@ class GiveFoodPage extends StatefulWidget {
 }
 
 class _GiveFoodPageState extends State<GiveFoodPage> {
+  final PageController _pageController = PageController();
+  int _currentStep = 0;
+
+  // Fields
   final List<String> foodTypes = [
     'Fruits',
     'Vegetables',
@@ -58,18 +63,86 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(50)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderSide: BorderSide(color: Colors.grey),
-        borderRadius: BorderRadius.circular(50),
+        borderRadius: BorderRadius.circular(12),
       ),
       focusedBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: Colors.teal),
-        borderRadius: BorderRadius.circular(50),
+        borderSide: BorderSide(color: Color(0xffffc533)),
+        borderRadius: BorderRadius.circular(12),
       ),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+      contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+    );
+  }
+
+  void nextStep() {
+    if (_currentStep < 2) {
+      setState(() {
+        _currentStep++;
+      });
+      _pageController.nextPage(
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void previousStep() {
+    if (_currentStep > 0) {
+      setState(() {
+        _currentStep--;
+      });
+      _pageController.previousPage(
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  Future<void> pickImage() async {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: Icon(Icons.camera_alt),
+                title: Text('Capture from Camera'),
+                onTap: () async {
+                  Navigator.pop(context); // Close the bottom sheet
+                  final XFile? image = await _picker.pickImage(
+                    source: ImageSource.camera,
+                  );
+                  if (image != null) {
+                    setState(() {
+                      selectedImage = image;
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library),
+                title: Text('Select from Gallery'),
+                onTap: () async {
+                  Navigator.pop(context); // Close the bottom sheet
+                  final XFile? image = await _picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (image != null) {
+                    setState(() {
+                      selectedImage = image;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -115,7 +188,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
         'timestamp': FieldValue.serverTimestamp(),
         'userId': user.uid,
         'userEmail': user.email,
-        'username': username, // ✅ added here
+        'username': username,
         'status': 'available',
       });
 
@@ -123,17 +196,14 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
         SnackBar(content: Text('Donation uploaded successfully!')),
       );
 
-      setState(() {
-        selectedFoodType = null;
-        quantity = 0;
-        selectedOption = '';
-        selectedImage = null;
-      });
-
-      nameController.clear();
-      expiryController.clear();
-      noteController.clear();
-      locationController.clear();
+      // Navigate back to Home
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomeScreen(),
+        ), // Replace with your HomeScreen widget
+        (route) => false, // Remove all previous routes
+      );
     } catch (e) {
       print('Upload error: $e');
       ScaffoldMessenger.of(
@@ -142,66 +212,162 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
     }
   }
 
-  Future<void> pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        selectedImage = image;
-      });
-    }
+  Widget stepIndicator(int step, String label) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor:
+              _currentStep == step ? Color(0xffffc533) : Colors.grey[300],
+          child: Text(
+            label,
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          step == 0
+              ? "Add Image"
+              : step == 1
+              ? "Details"
+              : "Confirm",
+          style: TextStyle(
+            fontSize: 12,
+            color: _currentStep == step ? Colors.black : Colors.grey,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => HomeScreen()),
+              (route) => false, // Remove all previous routes
+            );
+          },
+        ),
+        title: Text('Give', style: TextStyle(color: Colors.black)),
+        backgroundColor: Color(0xffffc533),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          // Step Indicator
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.person),
-                SizedBox(width: 42),
-                Text(
-                  "G2G",
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal,
-                  ),
-                ),
-                SizedBox(width: 40),
-                Icon(Icons.mail),
+                stepIndicator(0, "1"),
+                stepIndicator(1, "2"),
+                stepIndicator(2, "3"),
               ],
             ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: pickImage,
-              child: Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                ),
-                child:
-                    selectedImage == null
-                        ? Center(
-                          child: Icon(
-                            Icons.add_a_photo,
-                            size: 60,
-                            color: Colors.grey,
-                          ),
-                        )
-                        : Image.file(
+          ),
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: NeverScrollableScrollPhysics(), // Disable swipe gestures
+              children: [step1(), step2(), step3()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget step1() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          GestureDetector(
+            onTap: pickImage,
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black, width: 0.8),
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.white.withOpacity(0.2),
+              ),
+              child:
+                  selectedImage == null
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_a_photo,
+                              size: 50,
+                              color: Color(0xffffc533),
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              "Add an Image",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xffffc533),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.file(
                           File(selectedImage!.path),
                           fit: BoxFit.cover,
                         ),
+                      ),
+            ),
+          ),
+          SizedBox(height: 20),
+          // "Next" Button in Step 1
+          Align(
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: 150, // Set a fixed width for the button
+              child: ElevatedButton(
+                onPressed:
+                    selectedImage == null
+                        ? null
+                        : nextStep, // Disable if no image
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xffffc533),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 14), // Match size
+                ),
+                child: Text("Next", style: TextStyle(color: Colors.black)),
               ),
             ),
-            const SizedBox(height: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget step2() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Food Type Dropdown
             DropdownButtonFormField<String>(
               value: selectedFoodType,
-              hint: Text('Food Type'),
+              hint: Text('Select Food Type'),
               items:
                   foodTypes.map((type) {
                     return DropdownMenuItem<String>(
@@ -214,45 +380,83 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                   selectedFoodType = value;
                 });
               },
-              decoration: customInputDecoration("", "Food Type"),
+              decoration: customInputDecoration(
+                "Food Type",
+                "Select Food Type",
+              ),
             ),
             const SizedBox(height: 15),
+
+            // Food Name Input
             TextField(
               controller: nameController,
-              decoration: customInputDecoration("Name", "Food Name Here"),
+              decoration: customInputDecoration("Food Name", "Enter food name"),
             ),
             const SizedBox(height: 15),
+
+            // Expiry Date Picker
             TextField(
               controller: expiryController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [DateTextFormatter()],
-              decoration: customInputDecoration("Expiry", "MM/DD/YYYY"),
+              readOnly: true, // Prevent manual input
+              decoration: customInputDecoration("Expiry Date", "MM/DD/YYYY"),
+              onTap: () async {
+                DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(), // Set the initial date to today
+                  firstDate: DateTime.now(), // Prevent selecting past dates
+                  lastDate: DateTime(2100), // Set an upper limit for the date
+                );
+
+                if (pickedDate != null) {
+                  setState(() {
+                    expiryController.text =
+                        "${pickedDate.month.toString().padLeft(2, '0')}/${pickedDate.day.toString().padLeft(2, '0')}/${pickedDate.year}";
+                  });
+                }
+              },
             ),
             const SizedBox(height: 15),
+
+            // Quantity Selector
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 1),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(50),
+                borderRadius: BorderRadius.circular(12),
                 color: Colors.white,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Quantity'),
+                  const Text(
+                    'Quantity',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   Row(
                     children: [
                       IconButton(
-                        icon: Icon(Icons.remove_circle_outline),
+                        icon: Icon(
+                          Icons.remove_circle_outline,
+                          color: Color(0xffffc533),
+                        ),
                         onPressed: () {
                           setState(() {
                             if (quantity > 0) quantity--;
                           });
                         },
                       ),
-                      Text(quantity.toString(), style: TextStyle(fontSize: 16)),
+                      Text(
+                        quantity.toString(),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       IconButton(
-                        icon: Icon(Icons.add_circle_outline),
+                        icon: Icon(
+                          Icons.add_circle_outline,
+                          color: Color(0xffffc533),
+                        ),
                         onPressed: () {
                           setState(() {
                             quantity++;
@@ -265,6 +469,8 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
               ),
             ),
             const SizedBox(height: 15),
+
+            // Note Input
             TextField(
               controller: noteController,
               decoration: customInputDecoration(
@@ -273,6 +479,8 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
               ),
             ),
             const SizedBox(height: 15),
+
+            // Drop-Off or Pickup Options
             Row(
               children: [
                 Expanded(
@@ -287,7 +495,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           selectedOption == 'DROP-OFF'
-                              ? Colors.teal
+                              ? Color(0xffffc533)
                               : Colors.white,
                       foregroundColor:
                           selectedOption == 'DROP-OFF'
@@ -296,7 +504,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      side: BorderSide(color: Colors.teal),
+                      side: BorderSide(color: Color(0xffffc533)),
                     ),
                     child: const Text("DROP-OFF"),
                   ),
@@ -313,7 +521,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           selectedOption == 'PICKUP'
-                              ? Colors.teal
+                              ? Color(0xffffc533)
                               : Colors.white,
                       foregroundColor:
                           selectedOption == 'PICKUP'
@@ -322,7 +530,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      side: BorderSide(color: Colors.teal),
+                      side: BorderSide(color: Color(0xffffc533)),
                     ),
                     child: const Text("PICKUP"),
                   ),
@@ -330,28 +538,219 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
               ],
             ),
             const SizedBox(height: 15),
+
+            // Location Input (Only for Pickup)
             if (selectedOption == 'PICKUP')
               TextField(
                 controller: locationController,
                 decoration: customInputDecoration(
-                  "Location",
+                  "Pickup Location",
                   "Enter pickup location",
                 ),
               ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: uploadDonation,
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+
+            // Navigation Buttons
+            // Step 2 Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: previousStep,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      // side: BorderSide(color: Colors.grey), // Add border
+                      padding: EdgeInsets.symmetric(vertical: 14), // Match size
+                    ),
+                    child: Text(
+                      "Back",
+                      style: TextStyle(fontSize: 16, color: Colors.black),
+                    ),
+                  ),
                 ),
-                backgroundColor: Colors.teal,
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                SizedBox(width: 10), // Add spacing between buttons
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (selectedFoodType == null ||
+                          nameController.text.isEmpty ||
+                          expiryController.text.isEmpty ||
+                          quantity <= 0 ||
+                          selectedOption.isEmpty ||
+                          (selectedOption == 'PICKUP' &&
+                              locationController.text.isEmpty)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Please fill in all fields')),
+                        );
+                        return;
+                      }
+                      nextStep();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xffffc533),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 14), // Match size
+                    ),
+                    child: Text(
+                      "Next",
+                      style: TextStyle(fontSize: 16, color: Colors.black),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget step3() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Confirm Details",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 20),
+
+            // Details Container
+            Container(
+              padding: const EdgeInsets.all(16.0),
+
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
               ),
-              child: const Text(
-                'Post Donation',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Display Image
+                  if (selectedImage != null)
+                    Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.file(
+                          File(selectedImage!.path),
+                          height: 150,
+                          width: 150,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  if (selectedImage != null) SizedBox(height: 20),
+
+                  // Display Food Type
+                  Text(
+                    "Food Type: ${selectedFoodType ?? 'Not selected'}",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 10),
+
+                  // Display Food Name
+                  Text(
+                    "Food Name: ${nameController.text.isNotEmpty ? nameController.text : 'Not provided'}",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 10),
+
+                  // Display Expiry Date
+                  Text(
+                    "Expiry Date: ${expiryController.text.isNotEmpty ? expiryController.text : 'Not provided'}",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 10),
+
+                  // Display Quantity
+                  Text(
+                    "Quantity: ${quantity > 0 ? quantity.toString() : 'Not provided'}",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 10),
+
+                  // Display Note
+                  Text(
+                    "Note: ${noteController.text.isNotEmpty ? noteController.text : 'Not provided'}",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 10),
+
+                  // Display Drop-Off or Pickup Option
+                  Text(
+                    "Option: ${selectedOption.isNotEmpty ? selectedOption : 'Not selected'}",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 10),
+
+                  // Display Location (if Pickup is selected)
+                  if (selectedOption == 'PICKUP')
+                    Text(
+                      "Pickup Location: ${locationController.text.isNotEmpty ? locationController.text : 'Not provided'}",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                ],
               ),
+            ),
+            SizedBox(height: 20),
+
+            // Buttons Row
+            // Step 3 Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: previousStep,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      // side: BorderSide(color: Colors.grey), // Add border
+                      padding: EdgeInsets.symmetric(vertical: 14), // Match size
+                    ),
+                    child: Text(
+                      "Back",
+                      style: TextStyle(fontSize: 16, color: Colors.black),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10), // Add spacing between buttons
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: uploadDonation,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xffffc533),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 14), // Match size
+                    ),
+                    child: Text(
+                      "Give",
+                      style: TextStyle(fontSize: 16, color: Colors.black),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

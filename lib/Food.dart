@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'Basket.dart';
 import 'widgets/get_food_flow.dart';
 import 'widgets/quota_utils.dart';
+import 'widgets/full_screen_image.dart';
+
+Future<String?> fetchCurrentUserName(String userId) async {
+  final doc =
+      await FirebaseFirestore.instance.collection('users').doc(userId).get();
+  if (doc.exists) {
+    return doc.data()?['name'];
+  }
+  return null;
+}
 
 class FoodScreen extends StatelessWidget {
   final String foodId;
@@ -16,20 +27,70 @@ class FoodScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Food Details'),
-        backgroundColor: Colors.teal,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          onPressed: () {
+            Navigator.pop(context); // Go back to the previous screen
+          },
+        ),
+        title: const Text(
+          'Food Details',
+          style: TextStyle(color: Colors.black),
+        ),
+        backgroundColor: const Color(0xffffc533),
         actions: [
-          IconButton(
-            icon: Image.asset('assets/Bag.png', width: 45, height: 40),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => BasketScreen()),
+          StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(FirebaseAuth.instance.currentUser?.uid)
+                    .collection('basket')
+                    .snapshots(),
+            builder: (context, snapshot) {
+              int basketCount = 0;
+              if (snapshot.hasData) {
+                basketCount = snapshot.data!.docs.length;
+              }
+
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Image.asset('assets/Bag.png', width: 45, height: 40),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => BasketScreen()),
+                      );
+                    },
+                  ),
+                  if (basketCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$basketCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               );
             },
           ),
         ],
       ),
+
       body: StreamBuilder<DocumentSnapshot>(
         stream:
             FirebaseFirestore.instance
@@ -59,188 +120,248 @@ class FoodScreen extends StatelessWidget {
           final location = data['location'] as String? ?? 'N/A';
           final note = data['note'] as String? ?? 'No notes provided.';
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child:
-                        imageUrl.isNotEmpty
-                            ? Image.network(
-                              imageUrl,
-                              width: 250,
-                              height: 250,
-                              fit: BoxFit.cover,
-                            )
-                            : Container(
-                              width: 250,
-                              height: 250,
-                              color: Colors.grey[200],
-                              child: Icon(
-                                Icons.fastfood,
-                                size: 100,
-                                color: Colors.teal,
-                              ),
-                            ),
-                  ),
-                ),
-                SizedBox(height: 24),
-                Text(
-                  name,
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Row(
+          return FutureBuilder<String?>(
+            future: fetchCurrentUserName(
+              FirebaseAuth.instance.currentUser?.uid ?? '',
+            ),
+            builder: (context, userSnapshot) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              }
+
+              final currentUserName = userSnapshot.data;
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.person, color: Colors.grey[600]),
-                    SizedBox(width: 8),
-                    Text('Donor: $donor', style: TextStyle(fontSize: 16)),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                  margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) =>
+                                      FullScreenImageView(imageUrl: imageUrl),
+                            ),
+                          );
+                        },
+                        child: Hero(
+                          tag: imageUrl,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child:
+                                imageUrl.isNotEmpty
+                                    ? Image.network(
+                                      imageUrl,
+                                      width: 250,
+                                      height: 250,
+                                      fit: BoxFit.cover,
+                                    )
+                                    : Container(
+                                      width: 250,
+                                      height: 250,
+                                      color: Colors.grey[200],
+                                      child: Icon(
+                                        Icons.fastfood,
+                                        size: 100,
+                                        color: Color(0xffffc533),
+                                      ),
+                                    ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Row(
                       children: [
-                        _buildDetailRow(Icons.category, 'Type', foodType),
-                        _buildDetailRow(
-                          Icons.confirmation_number,
-                          'Quantity',
-                          quantityStr,
-                        ),
-                        _buildDetailRow(Icons.date_range, 'Expiry', expiryDate),
-                        _buildDetailRow(Icons.map, 'Location', location),
-                        _buildDetailRow(Icons.local_shipping, 'Option', option),
-                        SizedBox(height: 12),
-                        Text(
-                          'Note:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 4),
-                        Text(note),
+                        Icon(Icons.person, color: Colors.grey[600]),
+                        SizedBox(width: 8),
+                        Text('Donor: $donor', style: TextStyle(fontSize: 16)),
                       ],
                     ),
-                  ),
-                ),
-                SizedBox(height: 24),
-
-                FutureBuilder<QuerySnapshot>(
-                  future:
-                      FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(userId)
-                          .collection('basket')
-                          .get(),
-                  builder: (context, basketSnapshot) {
-                    int basketCount = 0;
-                    if (basketSnapshot.hasData) {
-                      basketCount = basketSnapshot.data!.docs.length;
-                    }
-
-                    bool isBasketFull = basketCount >= 5;
-
-                    return Column(
-                      children: [
-                        if (quantity == 0)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Text(
-                              'Unavailable',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        Row(
+                    SizedBox(height: 16),
+                    Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  if (quantity == 0) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('No stocks available.'),
-                                      ),
-                                    );
-                                  } else if (isBasketFull) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Basket is full.'),
-                                      ),
-                                    );
-                                  } else {
-                                    _showAddToBasketSheet(
-                                      context,
-                                      quantityStr,
-                                      userId!,
-                                      foodId,
-                                    );
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      isBasketFull || quantity == 0
-                                          ? Colors.grey
-                                          : Colors.orange,
-                                  padding: EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Add to Basket',
-                                  style: TextStyle(fontSize: 16),
-                                ),
-                              ),
+                            _buildDetailRow(Icons.category, 'Type', foodType),
+                            _buildDetailRow(
+                              Icons.confirmation_number,
+                              'Quantity',
+                              quantityStr,
                             ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  _showGetQuantitySheet(
-                                    context: context,
-                                    originalContext: context,
-                                    foodId: foodId,
-                                    foodName: name,
-                                    location: location,
-                                    imageUrl: imageUrl,
-                                    maxQuantity: quantity,
-                                  );
-                                },
-
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.teal,
-                                  padding: EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Get',
-                                  style: TextStyle(fontSize: 16),
-                                ),
-                              ),
+                            _buildDetailRow(
+                              Icons.date_range,
+                              'Expiry',
+                              expiryDate,
                             ),
+                            _buildDetailRow(Icons.map, 'Location', location),
+                            _buildDetailRow(
+                              Icons.local_shipping,
+                              'Option',
+                              option,
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'Note:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 4),
+                            Text(note),
                           ],
                         ),
-                      ],
-                    );
-                  },
+                      ),
+                    ),
+                    SizedBox(height: 24),
+
+                    FutureBuilder<QuerySnapshot>(
+                      future:
+                          FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(userId)
+                              .collection('basket')
+                              .get(),
+                      builder: (context, basketSnapshot) {
+                        int basketCount = 0;
+                        if (basketSnapshot.hasData) {
+                          basketCount = basketSnapshot.data!.docs.length;
+                        }
+
+                        bool isBasketFull = basketCount >= 5;
+
+                        return Column(
+                          children: [
+                            if (quantity == 0)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Text(
+                                  'Unavailable',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            if (donor !=
+                                currentUserName) // Hide buttons if donor is the current user
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        if (quantity == 0) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'No stocks available.',
+                                              ),
+                                            ),
+                                          );
+                                        } else if (isBasketFull) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Basket is full.'),
+                                            ),
+                                          );
+                                        } else {
+                                          _showAddToBasketSheet(
+                                            context,
+                                            quantityStr,
+                                            userId!,
+                                            foodId,
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            isBasketFull || quantity == 0
+                                                ? Colors.grey
+                                                : Color(0xffffffff),
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Add to Basket',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        _showGetQuantitySheet(
+                                          context: context,
+                                          originalContext: context,
+                                          foodId: foodId,
+                                          foodName: name,
+                                          location: location,
+                                          imageUrl: imageUrl,
+                                          maxQuantity: quantity,
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Color(0xffffc533),
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Get',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
@@ -328,7 +449,7 @@ void _showAddToBasketSheet(
                                 color: Colors.grey[200],
                                 child: Icon(
                                   Icons.fastfood,
-                                  color: Colors.teal,
+                                  color: Color(0xffffc533),
                                   size: 30,
                                 ),
                               ),
@@ -385,7 +506,7 @@ void _showAddToBasketSheet(
                       children: [
                         IconButton(
                           icon: Icon(Icons.remove_circle_outline),
-                          color: Colors.teal,
+                          color: Color(0xffffc533),
                           onPressed:
                               selectedQuantity > 1
                                   ? () => setState(() => selectedQuantity--)
@@ -400,7 +521,7 @@ void _showAddToBasketSheet(
                         ),
                         IconButton(
                           icon: Icon(Icons.add_circle_outline),
-                          color: Colors.teal,
+                          color: Color(0xffffc533),
                           onPressed:
                               selectedQuantity < maxQuantity
                                   ? () => setState(() => selectedQuantity++)
@@ -433,9 +554,7 @@ void _showAddToBasketSheet(
                         });
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              'Increased quantity of $selectedQuantity to Basket!',
-                            ),
+                            content: Text('Added $selectedQuantity to Basket!'),
                           ),
                         );
                       } else {
@@ -453,7 +572,7 @@ void _showAddToBasketSheet(
                       Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                      backgroundColor: Color(0xffffc533),
                       padding: EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -461,7 +580,7 @@ void _showAddToBasketSheet(
                     ),
                     child: Text(
                       'Add to Basket',
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(fontSize: 16, color: Colors.black),
                     ),
                   ),
                 ),
@@ -541,7 +660,7 @@ void _showGetQuantitySheet({
                                 color: Colors.grey[200],
                                 child: Icon(
                                   Icons.fastfood,
-                                  color: Colors.teal,
+                                  color: Color(0xffffc533),
                                   size: 30,
                                 ),
                               ),
@@ -599,7 +718,7 @@ void _showGetQuantitySheet({
                       children: [
                         IconButton(
                           icon: Icon(Icons.remove_circle_outline),
-                          color: Colors.teal,
+                          color: Color(0xffffc533),
                           onPressed:
                               selectedQuantity > 1
                                   ? () => setState(() => selectedQuantity--)
@@ -614,7 +733,7 @@ void _showGetQuantitySheet({
                         ),
                         IconButton(
                           icon: Icon(Icons.add_circle_outline),
-                          color: Colors.teal,
+                          color: Color(0xffffc533),
                           onPressed:
                               selectedQuantity < availableToSelect
                                   ? () => setState(() => selectedQuantity++)
@@ -661,13 +780,16 @@ void _showGetQuantitySheet({
                     },
 
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
+                      backgroundColor: Color(0xffffc533),
                       padding: EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: Text('Confirm Get', style: TextStyle(fontSize: 16)),
+                    child: Text(
+                      'Confirm Get',
+                      style: TextStyle(fontSize: 16, color: Colors.black),
+                    ),
                   ),
                 ),
               ],
