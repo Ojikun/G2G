@@ -143,7 +143,7 @@ class _BasketScreenState extends State<BasketScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () {
             if (Navigator.canPop(context)) {
               Navigator.pop(context); // Go back to the previous screen
@@ -156,8 +156,15 @@ class _BasketScreenState extends State<BasketScreen> {
             }
           },
         ),
-        title: Text('My Basket', style: TextStyle(color: Colors.black)),
-        backgroundColor: Color(0xffffc533), // Updated AppBar color
+        title: Text(
+          'My Basket',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
+        backgroundColor: Color(0xff238855), // Updated AppBar color
         centerTitle: true,
       ),
       body: SafeArea(
@@ -190,7 +197,7 @@ class _BasketScreenState extends State<BasketScreen> {
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.black,
+                                    color: Color(0xfffd8536),
                                   ),
                                 ),
                               ),
@@ -221,10 +228,10 @@ class _BasketScreenState extends State<BasketScreen> {
                                     // Ensures the red background matches the item's height
                                     child: Container(
                                       alignment: Alignment.centerRight,
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                      ),
-                                      color: Colors.red,
+                                      padding: EdgeInsets.only(right: 20),
+                                      margin: EdgeInsets.only(bottom: 10),
+
+                                      color: Color(0xfffd8536),
                                       child: Icon(
                                         Icons.delete,
                                         color: Colors.white,
@@ -254,82 +261,253 @@ class _BasketScreenState extends State<BasketScreen> {
                                     );
                                   },
                                   child: Container(
-                                    margin: EdgeInsets.only(bottom: 16),
+                                    margin: EdgeInsets.only(bottom: 10),
                                     decoration: BoxDecoration(
                                       color: containerColor,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
-                                    padding: EdgeInsets.all(12),
-                                    child: IntrinsicHeight(
-                                      child: Row(
-                                        children: [
-                                          Checkbox(
-                                            value: itemChecked,
-                                            onChanged:
-                                                canToggle
-                                                    ? (value) {
-                                                      setState(() {
-                                                        isChecked[index] =
-                                                            value!;
-                                                      });
-                                                    }
-                                                    : null,
-                                            activeColor: Color(0xffffc533),
-                                            checkColor: Colors.white,
-                                          ),
-                                          foodData['imageUrl'] != null
-                                              ? Container(
-                                                height: 80,
-                                                width: 80,
-                                                decoration: BoxDecoration(
-                                                  image: DecorationImage(
-                                                    image: NetworkImage(
-                                                      foodData['imageUrl'],
-                                                    ),
-                                                    fit: BoxFit.cover,
-                                                  ),
-                                                ),
-                                              )
-                                              : Icon(Icons.fastfood, size: 80),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  foodData['name'] ?? 'No Name',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 8),
-                                                Text(
-                                                  isUnavailable
-                                                      ? 'Unavailable'
-                                                      : 'Available',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        isUnavailable
-                                                            ? Colors.red
-                                                            : Colors.black,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 4),
-                                                Text(
-                                                  'Location: ${foodData['location'] ?? 'N/A'}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey[700],
-                                                  ),
-                                                ),
-                                              ],
+                                    padding: EdgeInsets.all(3),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Checkbox, Image, and Texts (Food Name, Availability, Location)
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment
+                                                  .center, // Center items vertically
+                                          children: [
+                                            // Checkbox
+                                            Checkbox(
+                                              value: itemChecked,
+                                              onChanged:
+                                                  canToggle
+                                                      ? (value) {
+                                                        setState(() {
+                                                          isChecked[index] =
+                                                              value!;
+                                                        });
+                                                      }
+                                                      : null,
+                                              activeColor: Color(0xff238855),
+                                              checkColor: Colors.white,
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap, // Reduce checkbox size
                                             ),
-                                          ),
-                                        ],
-                                      ),
+                                            // Image
+                                            ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child:
+                                                  foodData['imageUrl'] != null
+                                                      ? Image.network(
+                                                        foodData['imageUrl'],
+                                                        width:
+                                                            80, // Increased width
+                                                        height:
+                                                            80, // Increased height
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                      : Container(
+                                                        width:
+                                                            80, // Increased width
+                                                        height:
+                                                            80, // Increased height
+                                                        color: Colors.grey[200],
+                                                        child: Icon(
+                                                          Icons.fastfood,
+                                                          color: Color(
+                                                            0xfffd8536,
+                                                          ),
+                                                          size:
+                                                              40, // Adjusted icon size
+                                                        ),
+                                                      ),
+                                            ),
+                                            SizedBox(
+                                              width: 8,
+                                            ), // Reduced space between the image and the text
+                                            // Food Name, Availability, Location, and Quantity
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  SizedBox(
+                                                    height: 8,
+                                                  ), // Space between image and text
+                                                  // Food Name
+                                                  Text(
+                                                    foodData['name'] ??
+                                                        'No Name',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  // Availability
+                                                  Text(
+                                                    isUnavailable
+                                                        ? 'Unavailable'
+                                                        : 'Available',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color:
+                                                          isUnavailable
+                                                              ? Colors.red
+                                                              : Colors.black,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  // Location
+                                                  Text(
+                                                    'Location: ${foodData['location'] ?? 'N/A'}',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey[700],
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  // Quantity
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        'Quantity:',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          // Decrement Button
+                                                          IconButton(
+                                                            icon: Icon(
+                                                              Icons
+                                                                  .remove_circle_outline,
+                                                              size: 20,
+                                                            ),
+                                                            padding:
+                                                                EdgeInsets.zero,
+                                                            constraints:
+                                                                BoxConstraints(),
+                                                            color:
+                                                                item['quantity'] >
+                                                                        1
+                                                                    ? Color(
+                                                                      0xfffd8536,
+                                                                    )
+                                                                    : Colors
+                                                                        .grey,
+                                                            onPressed:
+                                                                item['quantity'] >
+                                                                        1
+                                                                    ? () async {
+                                                                      setState(
+                                                                        () {
+                                                                          item['quantity']--;
+                                                                        },
+                                                                      );
+
+                                                                      // Update the quantity in Firestore
+                                                                      await FirebaseFirestore
+                                                                          .instance
+                                                                          .collection(
+                                                                            'users',
+                                                                          )
+                                                                          .doc(
+                                                                            userId,
+                                                                          )
+                                                                          .collection(
+                                                                            'basket',
+                                                                          )
+                                                                          .doc(
+                                                                            item['foodId'],
+                                                                          )
+                                                                          .update({
+                                                                            'quantity':
+                                                                                item['quantity'],
+                                                                          });
+                                                                    }
+                                                                    : null, // Disable button if quantity is 1
+                                                          ),
+                                                          Text(
+                                                            '${item['quantity']}',
+                                                            style: TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                          // Increment Button
+                                                          IconButton(
+                                                            icon: Icon(
+                                                              Icons
+                                                                  .add_circle_outline,
+                                                              size: 20,
+                                                            ),
+                                                            padding:
+                                                                EdgeInsets.zero,
+                                                            constraints:
+                                                                BoxConstraints(),
+                                                            color:
+                                                                item['quantity'] <
+                                                                        item['availableQuantity']
+                                                                    ? Color(
+                                                                      0xfffd8536,
+                                                                    )
+                                                                    : Colors
+                                                                        .grey,
+                                                            onPressed:
+                                                                item['quantity'] <
+                                                                        item['availableQuantity']
+                                                                    ? () async {
+                                                                      setState(
+                                                                        () {
+                                                                          item['quantity']++;
+                                                                        },
+                                                                      );
+
+                                                                      // Update the quantity in Firestore
+                                                                      await FirebaseFirestore
+                                                                          .instance
+                                                                          .collection(
+                                                                            'users',
+                                                                          )
+                                                                          .doc(
+                                                                            userId,
+                                                                          )
+                                                                          .collection(
+                                                                            'basket',
+                                                                          )
+                                                                          .doc(
+                                                                            item['foodId'],
+                                                                          )
+                                                                          .update({
+                                                                            'quantity':
+                                                                                item['quantity'],
+                                                                          });
+                                                                    }
+                                                                    : null, // Disable button if quantity reaches availableQuantity
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 );
@@ -341,11 +519,15 @@ class _BasketScreenState extends State<BasketScreen> {
             ),
 
             // GET button
-            // GET button
             Padding(
-              padding: const EdgeInsets.only(
-                bottom: 16.0,
-              ), // Add space below the button
+              padding: EdgeInsets.only(
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom > 0
+                        ? MediaQuery.of(context).viewInsets.bottom +
+                            16 // Adjust above the overlay
+                        : MediaQuery.of(context).padding.bottom +
+                            16, // Adjust above the navigation bar
+              ),
               child: Align(
                 alignment: Alignment.center,
                 child: SizedBox(
@@ -353,7 +535,7 @@ class _BasketScreenState extends State<BasketScreen> {
                   child: ElevatedButton(
                     onPressed: _handleGet, // Original functionality
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xffffc533),
+                      backgroundColor: Color(0xfffd8536),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(
                           12,
@@ -364,13 +546,14 @@ class _BasketScreenState extends State<BasketScreen> {
                     child: Text(
                       "GET",
                       style: TextStyle(
-                        color: Colors.black,
+                        color: Colors.white,
                       ), // Match the provided style
                     ),
                   ),
                 ),
               ),
             ),
+            SizedBox(height: 80),
           ],
         ),
       ),

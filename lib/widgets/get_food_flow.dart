@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'quota_utils.dart'; // Contains getRemainingWeeklyQuantity() and kWeeklyLimit
+import '../Homepage.dart';
+import '../main.dart'; // Contains navigatorKey
 
 class GetFoodItem {
   final String foodId;
@@ -32,7 +34,6 @@ void showGetBasketFlow({
 
   if (totalRequested > remainingThisWeek) {
     if (context.mounted) {
-      // Check if the context is still valid
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -44,132 +45,179 @@ void showGetBasketFlow({
     return;
   }
 
-  // Confirmation dialog
+  // Confirmation bottom sheet
   bool confirmed = false;
   if (context.mounted) {
-    confirmed = await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/Get.png',
-                    width: 30,
-                    height: 30,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                SizedBox(width: 10),
-                Text(
-                  "Confirm Food Items",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xffffc533),
-                  ),
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
+    confirmed =
+        await showModalBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.white,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          builder: (ctx) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ...items.map(
-                    (item) => Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 3,
-                      margin: EdgeInsets.symmetric(vertical: 5),
-                      child: ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child:
-                              item.imageUrl.isNotEmpty
-                                  ? Image.network(
-                                    item.imageUrl,
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                  )
-                                  : Icon(
-                                    Icons.fastfood,
-                                    size: 40,
-                                    color: Colors.teal,
-                                  ),
-                        ),
-                        title: Text(
-                          item.foodName,
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Quantity: ${item.quantity}",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.location_on,
-                                  size: 16,
-                                  color: Colors.grey[600],
-                                ),
-                                SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    item.location,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[700],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[400],
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(
+                          'assets/get.png',
+                          width: 30,
+                          height: 30,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        "Confirm Food Items",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          color: Color(0xff238855),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 3,
+                          margin: const EdgeInsets.symmetric(vertical: 5),
+                          child: ListTile(
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child:
+                                  item.imageUrl.isNotEmpty
+                                      ? Image.network(
+                                        item.imageUrl,
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : const Icon(
+                                        Icons.fastfood,
+                                        size: 40,
+                                        color: Color(0xff238855),
+                                      ),
+                            ),
+                            title: Text(
+                              item.foodName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Quantity: ${item.quantity}",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        item.location,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[700],
+                                        ),
+                                        maxLines: null,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          label: const Text(
+                            "Cancel",
+                            style: TextStyle(color: Colors.black, fontSize: 16),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: Color(0xff238855)),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          label: const Text(
+                            "Claim",
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xfffd8536),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ),
-            actionsPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            actions: [
-              TextButton.icon(
-                label: Text("Cancel", style: TextStyle(color: Colors.black)),
-                onPressed: () => Navigator.of(ctx).pop(false),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xffffc533),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                label: Text("Claim", style: TextStyle(color: Colors.black)),
-                onPressed: () => Navigator.of(ctx).pop(true),
-              ),
-            ],
-          ),
-    );
+            );
+          },
+        ) ??
+        false;
   }
 
-  if (confirmed != true) return;
+  if (!confirmed) return;
 
   // Claim items
   final claimedItems = <GetFoodItem>[];
@@ -182,7 +230,6 @@ void showGetBasketFlow({
 
     if (item.quantity > currentQuantity) {
       if (context.mounted) {
-        // Ensure context is still valid
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Not enough stock for ${item.foodName}.")),
         );
@@ -222,8 +269,20 @@ void showGetBasketFlow({
     locationGroups.putIfAbsent(item.location, () => []).add(item);
   }
 
-  for (final group in locationGroups.entries) {
-    _showGroupedTimerOverlay(context, group.key, group.value);
+  final currentContext = navigatorKey.currentContext;
+  if (currentContext != null) {
+    for (final group in locationGroups.entries) {
+      _showGroupedTimerOverlay(currentContext, group.key, group.value);
+    }
+  }
+
+  // Navigate to Homepage after showing overlays
+  if (context.mounted) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => HomeScreen()),
+      (route) => false,
+    );
   }
 }
 
@@ -282,7 +341,7 @@ void _showGroupedTimerOverlay(
         bottom: bottomOffset, // Dynamic bottom offset based on active overlays.
         child: Material(
           elevation: 8,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           color: Colors.white,
           child: StatefulBuilder(
             builder: (context, setState) {
@@ -316,15 +375,15 @@ void _showGroupedTimerOverlay(
                 },
                 child: AnimatedContainer(
                   duration: Duration(milliseconds: 300),
-                  padding: EdgeInsets.all(18),
+                  padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
-                        blurRadius: 12,
-                        offset: Offset(0, 5),
+                        // blurRadius: 12,
+                        // offset: Offset(0, 5),
                       ),
                     ],
                   ),
@@ -347,7 +406,8 @@ void _showGroupedTimerOverlay(
                                     Text(
                                       "📍 Get at $location",
                                       style: TextStyle(fontSize: 14),
-                                      overflow: TextOverflow.ellipsis,
+                                      maxLines:
+                                          null, // Allow the text to wrap to multiple lines
                                     ),
                                   ],
                                 ),
@@ -362,7 +422,7 @@ void _showGroupedTimerOverlay(
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xffffc533),
+                                      color: Color(0xff238855),
                                     ),
                                   ),
                                   TextButton.icon(
@@ -372,12 +432,12 @@ void _showGroupedTimerOverlay(
                                     },
                                     icon: Icon(
                                       Icons.check_circle_outline,
-                                      color: Color(0xffffc533),
+                                      color: Color(0xff238855),
                                     ),
                                     label: Text(
                                       "Done",
                                       style: TextStyle(
-                                        color: Color(0xffffc533),
+                                        color: Color(0xff238855),
                                       ),
                                     ),
                                   ),
@@ -396,7 +456,7 @@ void _showGroupedTimerOverlay(
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              Icon(Icons.expand_more, color: Color(0xffffc533)),
+                              Icon(Icons.expand_more, color: Color(0xff238855)),
                             ],
                           ),
                 ),

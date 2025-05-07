@@ -2,149 +2,247 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Food.dart';
+import 'Homepage.dart';
+import 'accepted_trade.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
 
+class _HistoryScreenState extends State<HistoryScreen> {
+  final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
+  @override
+  Widget build(BuildContext context) {
     if (currentUserId == null) {
-      return Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-            onPressed: () {
-              Navigator.pop(context); // Go back to the previous screen
-            },
-          ),
-          title: const Text('History', style: TextStyle(color: Colors.black)),
-          backgroundColor: const Color(0xffffc533),
-        ),
-        body: const Center(child: Text('User not logged in.')),
-      );
+      return const Center(child: Text('User not logged in.'));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History'),
-        backgroundColor: Color(0xffffc533),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => HomeScreen()),
+              );
+            }
+          },
+        ),
+        title: const Text(
+          'My History',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
+        backgroundColor: const Color(0xff238855),
+        elevation: 0,
       ),
+      backgroundColor: Colors.grey[50],
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Section: Gives
-            const Text(
-              'Gives',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            _buildSectionHeader(
+              title: 'Gives',
+              subtitle: 'Your donation history',
+              iconAsset: 'assets/give.png',
             ),
             const SizedBox(height: 10),
-            _buildGivesSection(currentUserId),
+            _buildGivesSection(currentUserId!),
 
             const SizedBox(height: 20),
 
-            // Section: Gets
-            const Text(
-              'Gets',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            _buildSectionHeader(
+              title: 'Gets',
+              subtitle: 'Items you\'ve received',
+              iconAsset: 'assets/get.png',
             ),
             const SizedBox(height: 10),
-            _buildGetsSection(currentUserId),
+            _buildGetsSection(currentUserId!),
 
             const SizedBox(height: 20),
 
-            // Section: Trades
-            const Text(
-              'Trades',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            _buildSectionHeader(
+              title: 'Trades',
+              subtitle: 'Your trading history',
+              iconAsset: 'assets/trade.png',
             ),
             const SizedBox(height: 10),
-            _buildTradesSection(currentUserId),
+            _buildTradesSection(currentUserId!),
+
+            const SizedBox(height: 80),
           ],
         ),
       ),
     );
   }
 
-  // Section: Gives
-  // Section: Gives
-  Widget _buildGivesSection(String currentUserId) {
+  Widget _buildSectionHeader({
+    required String title,
+    required String subtitle,
+    required String iconAsset,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xff238855).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Image.asset(iconAsset, width: 24, height: 24),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xff238855),
+                ),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryCard({
+    required String title,
+    required String date,
+    required String imageUrl,
+    VoidCallback? onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      color: Colors.white,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child:
+              imageUrl.isNotEmpty
+                  ? Image.network(
+                    imageUrl,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                  )
+                  : Container(
+                    width: 50,
+                    height: 50,
+                    color: Colors.white,
+                    child: Icon(Icons.fastfood, color: Colors.white),
+                  ),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        subtitle: Text(
+          date,
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        onTap: onTap,
+        trailing:
+            onTap != null
+                ? const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Color(0xfffd8536),
+                  size: 16,
+                )
+                : null,
+      ),
+    );
+  }
+
+  Widget _buildGivesSection(String userId) {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
               .collection('donations')
-              .where('userId', isEqualTo: currentUserId)
+              .where('userId', isEqualTo: userId)
               .orderBy('timestamp', descending: true)
               .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const SizedBox(
+            height: 100,
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('No donations found.'));
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Text(
+                'No donations yet. Start giving to earn badges!',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
         }
-
-        final docs = snapshot.data!.docs;
 
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: docs.length,
+          itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
-            final data = docs[index].data() as Map<String, dynamic>;
-            final foodId = docs[index].id; // Get the document ID (foodId)
-            final foodName = data['name'] ?? 'No Name';
-            final imageUrl = data['imageUrl'] ?? '';
+            final doc = snapshot.data!.docs[index];
+            final data = doc.data() as Map<String, dynamic>;
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 3,
-              child: ListTile(
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child:
-                      imageUrl.isNotEmpty
-                          ? Image.network(
-                            imageUrl,
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
-                          )
-                          : Container(
-                            width: 50,
-                            height: 50,
-                            color: Colors.grey[300],
-                            child: const Icon(
-                              Icons.fastfood,
-                              color: Colors.grey,
-                            ),
-                          ),
-                ),
-                title: Text(
-                  foodName,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
+            return _buildHistoryCard(
+              title: data['name'] ?? 'No Name',
+              date:
                   "Donated on: ${data['timestamp']?.toDate().toString().split(' ')[0] ?? 'N/A'}",
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                onTap: () {
-                  // Navigate to FoodScreen with the foodId
-                  Navigator.push(
+              imageUrl: data['imageUrl'] ?? '',
+              onTap:
+                  () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => FoodScreen(foodId: foodId),
+                      builder: (context) => FoodScreen(foodId: doc.id),
                     ),
-                  );
-                },
-              ),
+                  ),
             );
           },
         );
@@ -152,33 +250,46 @@ class HistoryScreen extends StatelessWidget {
     );
   }
 
-  // Section: Gets
-  Widget _buildGetsSection(String currentUserId) {
+  Widget _buildGetsSection(String userId) {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
               .collection('users')
-              .doc(currentUserId)
+              .doc(userId)
               .collection('gets')
+              .orderBy('timestamp', descending: true)
               .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const SizedBox(
+            height: 100,
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('No items gotten.'));
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Text(
+                'No items received yet.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
         }
-
-        final docs = snapshot.data!.docs;
 
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: docs.length,
+          itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
-            final data = docs[index].data() as Map<String, dynamic>;
+            final data =
+                snapshot.data!.docs[index].data() as Map<String, dynamic>;
             final foodId = data['foodId'] ?? '';
-            final foodName = data['foodName'] ?? 'No Name';
 
             return FutureBuilder<DocumentSnapshot>(
               future:
@@ -186,67 +297,26 @@ class HistoryScreen extends StatelessWidget {
                       .collection('donations')
                       .doc(foodId)
                       .get(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || !snapshot.data!.exists) {
-                  return Container(
-                    width: 150,
-                    margin: const EdgeInsets.only(right: 10),
-                    child: const Center(child: Text('No Image')),
-                  );
+              builder: (context, donationSnapshot) {
+                if (!donationSnapshot.hasData) {
+                  return const SizedBox();
                 }
 
                 final donationData =
-                    snapshot.data!.data() as Map<String, dynamic>;
-                final imageUrl = donationData['imageUrl'] ?? '';
+                    donationSnapshot.data?.data() as Map<String, dynamic>?;
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 3,
-                  child: ListTile(
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child:
-                          imageUrl.isNotEmpty
-                              ? Image.network(
-                                imageUrl,
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                              )
-                              : Container(
-                                width: 50,
-                                height: 50,
-                                color: Colors.grey[300],
-                                child: const Icon(
-                                  Icons.fastfood,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                    ),
-                    title: Text(
-                      foodName,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      "Gotten on: ${data['timestamp']?.toDate().toString().split(' ')[0] ?? 'N/A'}",
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    onTap: () {
-                      // Navigate to FoodScreen with the foodId
-                      Navigator.push(
+                return _buildHistoryCard(
+                  title: data['foodName'] ?? 'No Name',
+                  date:
+                      "Received on: ${data['timestamp']?.toDate().toString().split(' ')[0] ?? 'N/A'}",
+                  imageUrl: donationData?['imageUrl'] ?? '',
+                  onTap:
+                      () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => FoodScreen(foodId: foodId),
                         ),
-                      );
-                    },
-                  ),
+                      ),
                 );
               },
             );
@@ -256,73 +326,81 @@ class HistoryScreen extends StatelessWidget {
     );
   }
 
-  // Section: Trades
-  Widget _buildTradesSection(String currentUserId) {
+  Widget _buildTradesSection(String userId) {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
               .collection('trades')
-              .where('uid', isEqualTo: currentUserId)
+              .where('uid', isEqualTo: userId)
+              .orderBy('timestamp', descending: true)
               .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const SizedBox(
+            height: 100,
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('No trades found.'));
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Text(
+                'No trades yet. Start trading to earn badges!',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
         }
-
-        final docs = snapshot.data!.docs;
 
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: docs.length,
+          itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
-            final data = docs[index].data() as Map<String, dynamic>;
-            final foodName = data['foodName'] ?? 'No Name';
-            final imageUrl = data['imageUrl'] ?? '';
+            final doc = snapshot.data!.docs[index];
+            final data = doc.data() as Map<String, dynamic>;
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 3,
-              child: ListTile(
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child:
-                      imageUrl.isNotEmpty
-                          ? Image.network(
-                            imageUrl,
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
-                          )
-                          : Container(
-                            width: 50,
-                            height: 50,
-                            color: Colors.grey[300],
-                            child: const Icon(
-                              Icons.fastfood,
-                              color: Colors.grey,
-                            ),
+            return _buildHistoryCard(
+              title: data['foodName'] ?? 'No Name',
+              date: "Traded on: ${_formatDate(data['timestamp'])}",
+              imageUrl: data['imageUrl'] ?? '',
+              onTap: () {
+                // Navigate to different screens based on trade status
+                if (data['status'] == 'accepted') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => AcceptedTradePage(
+                            tradePostId: doc.id,
+                            requestId: data['requestId'] ?? '',
                           ),
-                ),
-                title: Text(
-                  foodName,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  "Traded on: ${data['timestamp']?.toDate().toString().split(' ')[0] ?? 'N/A'}",
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ),
+                    ),
+                  );
+                } else if (data['status'] == 'pending') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FoodScreen(foodId: data['foodId']),
+                    ),
+                  );
+                }
+              },
             );
           },
         );
       },
     );
   }
+}
+
+String _formatDate(Timestamp? timestamp) {
+  if (timestamp == null) return 'N/A';
+  final date = timestamp.toDate();
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }

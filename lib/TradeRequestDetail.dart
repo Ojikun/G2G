@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'services/fcm_service.dart';
+import 'services/badge_service.dart';
 
 class TradeRequestDetailPage extends StatefulWidget {
   final String postId;
@@ -20,7 +22,7 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
   Map<String, dynamic>? myPostData;
   Map<String, dynamic>? requestData;
   bool isLoading = true;
-  bool isTradeDeclined = false; // Track if the trade is declined
+  bool isTradeDeclined = false;
   bool isTradeAccepted = false;
 
   @override
@@ -55,6 +57,76 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
     }
   }
 
+  Future<void> _handleAccept(BuildContext context) async {
+    Navigator.of(context).pop(); // Close the dialog
+    setState(() => isTradeAccepted = true);
+
+    try {
+      // Update the trade request status to "accepted"
+      await FirebaseFirestore.instance
+          .collection('trades')
+          .doc(widget.postId)
+          .collection('tradeRequests')
+          .doc(widget.requestId)
+          .update({'status': 'accepted'});
+
+      // Fetch the user who sent the trade request
+      final offeredUserId = requestData?['uid'];
+      final userSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(offeredUserId)
+              .get();
+
+      final fcmToken = userSnapshot.data()?['fcmToken'];
+      final username = myPostData?['username'] ?? 'Someone';
+
+      if (fcmToken != null) {
+        // Send push notification
+        await FCMServiceV1.sendPushNotification(
+          targetToken: fcmToken,
+          title: 'Trade Accepted',
+          body: '$username accepted your trade request!',
+        );
+
+        // Add a notification entry in Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(offeredUserId)
+            .collection('notifications')
+            .add({
+              'title': 'Trade Accepted',
+              'body': '$username accepted your trade request!',
+              'tradePostId': widget.postId,
+              'requestId': widget.requestId,
+              'timestamp': FieldValue.serverTimestamp(),
+              'isRead': false,
+            });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Trade Accepted and notification sent')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to send notification: No FCM token'),
+          ),
+        );
+      }
+
+      // Check and award badges
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUserId != null) {
+        await BadgeService.checkAndAwardBadges(context, currentUserId);
+      }
+    } catch (e) {
+      print('Error while accepting trade: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -65,7 +137,7 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
       appBar: AppBar(
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () {
             Navigator.pop(context); // Go back to the previous screen
           },
@@ -75,10 +147,12 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xffffc533),
+        backgroundColor: const Color(
+          0xff238855,
+        ), // Match Give.dart app bar color
         elevation: 0, // Remove shadow for a flat look
       ),
       body: Padding(
@@ -98,18 +172,51 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
                     children: [
                       // Background Image
                       Positioned.fill(
-                        child: Image.network(
-                          myPostData?['imageUrl'] ?? '',
-                          fit: BoxFit.cover,
-                        ),
+                        child:
+                            myPostData?['imageUrl']?.isNotEmpty == true
+                                ? Image.network(
+                                  myPostData!['imageUrl']!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: const Color(0xfffd8536),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.fastfood,
+                                          size: 60,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                )
+                                : Container(
+                                  color: const Color(0xfffd8536),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.fastfood,
+                                      size: 60,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
                       ),
-                      // Details Overlay
+                      // Gradient overlay with text
                       Positioned(
-                        bottom: 0,
                         left: 0,
                         right: 0,
+                        bottom: 0,
                         child: Container(
-                          color: Colors.black.withOpacity(0.4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.7),
+                              ],
+                            ),
+                          ),
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,6 +230,7 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
                                   color: Colors.white,
                                 ),
                               ),
+                              const SizedBox(height: 4),
                               Text(
                                 'Expiry: ${myPostData?['expiry'] ?? 'N/A'}',
                                 style: const TextStyle(
@@ -146,8 +254,6 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            // BOTTOM: Offered Post
             Expanded(
               child: Card(
                 elevation: 4,
@@ -160,18 +266,51 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
                     children: [
                       // Background Image
                       Positioned.fill(
-                        child: Image.network(
-                          requestData?['tradeImageUrl'] ?? '',
-                          fit: BoxFit.cover,
-                        ),
+                        child:
+                            requestData?['tradeImageUrl']?.isNotEmpty == true
+                                ? Image.network(
+                                  requestData!['tradeImageUrl']!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: const Color(0xfffd8536),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.fastfood,
+                                          size: 60,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                )
+                                : Container(
+                                  color: const Color(0xfffd8536),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.fastfood,
+                                      size: 60,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
                       ),
-                      // Details Overlay
+                      // Gradient overlay with text
                       Positioned(
-                        bottom: 0,
                         left: 0,
                         right: 0,
+                        bottom: 0,
                         child: Container(
-                          color: Colors.black.withOpacity(0.4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.7),
+                              ],
+                            ),
+                          ),
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,22 +324,16 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
                                   color: Colors.white,
                                 ),
                               ),
+                              const SizedBox(height: 4),
                               Text(
-                                'Trade Expiry: ${requestData?['tradeExpiry'] ?? 'N/A'}',
+                                'Expiry: ${requestData?['tradeExpiry'] ?? 'N/A'}',
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: Colors.white,
                                 ),
                               ),
                               Text(
-                                'Trade Description: ${requestData?['tradeDescription'] ?? 'No description'}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                'Offered by: ${requestData?['name'] ?? 'Unknown'}',
+                                'Description: ${requestData?['tradeDescription'] ?? 'No description'}',
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: Colors.white,
@@ -222,55 +355,85 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed:
-                        isTradeAccepted
-                            ? null
+                        isTradeAccepted || isTradeDeclined
+                            ? null // Disable button if trade is already accepted or declined
                             : () {
                               showDialog(
                                 context: context,
                                 builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: const Text('Confirm Decline'),
-                                    content: const Text(
-                                      'Are you sure you want to decline this trade?',
+                                  return Theme(
+                                    data: ThemeData.light().copyWith(
+                                      dialogBackgroundColor: Colors.white,
+                                      textButtonTheme: TextButtonThemeData(
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: const Color(
+                                            0xff238855,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                        },
-                                        child: const Text('Cancel'),
+                                    child: AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
-                                      TextButton(
-                                        onPressed: () async {
-                                          Navigator.of(context).pop();
-                                          setState(() {
-                                            isTradeDeclined = true;
-                                          });
-
-                                          try {
-                                            await FirebaseFirestore.instance
-                                                .collection('trades')
-                                                .doc(widget.postId)
-                                                .collection('tradeRequests')
-                                                .doc(widget.requestId)
-                                                .update({'status': 'declined'});
-
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Trade Declined'),
-                                              ),
-                                            );
-                                          } catch (e) {
-                                            print(
-                                              'Error while declining trade: $e',
-                                            );
-                                          }
-                                        },
-                                        child: const Text('Decline'),
+                                      title: const Text(
+                                        'Confirm Decline',
+                                        style: TextStyle(
+                                          color: Color(0xff238855),
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ],
+                                      content: const Text(
+                                        'Are you sure you want to decline this trade?',
+                                        style: TextStyle(color: Colors.black87),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed:
+                                              () => Navigator.of(context).pop(),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () async {
+                                            Navigator.of(context).pop();
+                                            setState(() {
+                                              isTradeDeclined = true;
+                                            });
+                                            try {
+                                              await FirebaseFirestore.instance
+                                                  .collection('trades')
+                                                  .doc(widget.postId)
+                                                  .collection('tradeRequests')
+                                                  .doc(widget.requestId)
+                                                  .update({
+                                                    'status': 'declined',
+                                                  });
+
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Trade Declined',
+                                                  ),
+                                                ),
+                                              );
+                                            } catch (e) {
+                                              print(
+                                                'Error while declining trade: $e',
+                                              );
+                                            }
+                                          },
+                                          child: const Text(
+                                            'Decline',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xfffd8536),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   );
                                 },
                               );
@@ -279,7 +442,8 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: Color(0xff238855)),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
@@ -293,133 +457,72 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed:
-                        isTradeDeclined
-                            ? null
+                        isTradeAccepted || isTradeDeclined
+                            ? null // Disable button if trade is already accepted or declined
                             : () {
                               showDialog(
                                 context: context,
                                 builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: const Text('Confirm Accept'),
-                                    content: const Text(
-                                      'Are you sure you want to accept this trade?',
+                                  return Theme(
+                                    data: ThemeData.light().copyWith(
+                                      dialogBackgroundColor: Colors.white,
+                                      textButtonTheme: TextButtonThemeData(
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: const Color(
+                                            0xff238855,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                        },
-                                        child: const Text('Cancel'),
+                                    child: AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
-                                      TextButton(
-                                        onPressed: () async {
-                                          Navigator.of(
-                                            context,
-                                          ).pop(); // Close the dialog
-                                          setState(() {
-                                            isTradeAccepted = true;
-                                          });
-
-                                          try {
-                                            // Update the status to "accepted" in Firestore
-                                            await FirebaseFirestore.instance
-                                                .collection('trades')
-                                                .doc(widget.postId)
-                                                .collection('tradeRequests')
-                                                .doc(widget.requestId)
-                                                .update({'status': 'accepted'});
-
-                                            // Fetch the user who sent the trade request
-                                            final offeredUserId =
-                                                requestData?['uid']; // Assuming 'uid' is the user ID
-                                            final userSnapshot =
-                                                await FirebaseFirestore.instance
-                                                    .collection('users')
-                                                    .doc(offeredUserId)
-                                                    .get();
-
-                                            final fcmToken =
-                                                userSnapshot
-                                                    .data()?['fcmToken']; // FCM token of the user
-                                            final username =
-                                                myPostData?['username'] ??
-                                                'Someone'; // Username of the trade owner
-
-                                            if (fcmToken != null) {
-                                              // Send push notification
-                                              await FCMServiceV1.sendPushNotification(
-                                                targetToken: fcmToken,
-                                                title: 'Trade Accepted',
-                                                body:
-                                                    '$username accepted your trade request!',
-                                              );
-
-                                              // Add a notification entry in Firestore
-                                              await FirebaseFirestore.instance
-                                                  .collection('users')
-                                                  .doc(offeredUserId)
-                                                  .collection('notifications')
-                                                  .add({
-                                                    'title': 'Trade Accepted',
-                                                    'body':
-                                                        '$username accepted your trade request!',
-                                                    'timestamp':
-                                                        FieldValue.serverTimestamp(),
-                                                    'isRead': false,
-                                                  });
-
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Trade Accepted and notification sent',
-                                                  ),
-                                                ),
-                                              );
-                                            } else {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Failed to send notification: No FCM token',
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          } catch (e) {
-                                            print(
-                                              'Error while accepting trade: $e',
-                                            );
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                  'Error: ${e.toString()}',
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        },
-                                        child: const Text('Accept'),
+                                      title: const Text(
+                                        'Confirm Accept',
+                                        style: TextStyle(
+                                          color: Color(0xff238855),
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ],
+                                      content: const Text(
+                                        'Are you sure you want to accept this trade?',
+                                        style: TextStyle(color: Colors.black87),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed:
+                                              () => Navigator.of(context).pop(),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () async {
+                                            await _handleAccept(context);
+                                          },
+                                          child: const Text(
+                                            'Accept',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xfffd8536),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   );
                                 },
                               );
                             },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xffffc533),
+                      backgroundColor: const Color(0xfffd8536),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: const Text(
                       "Accept",
-                      style: TextStyle(fontSize: 16, color: Colors.black),
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
                 ),

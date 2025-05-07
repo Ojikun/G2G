@@ -32,17 +32,24 @@ class _GetScreenPageState extends State<GetScreenPage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => HomeScreen()),
-              (route) => false, // Remove all previous routes
+              (route) => false,
             );
           },
         ),
-        title: Text('Get Donations', style: TextStyle(color: Colors.black)),
-        backgroundColor: Color(0xffffc533),
+        title: Text(
+          'Get Donations',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
+        backgroundColor: Color(0xff238855),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -65,9 +72,15 @@ class _GetScreenPageState extends State<GetScreenPage> {
                           _searchQuery = value.toLowerCase();
                         });
                       },
+                      cursorColor: Color(
+                        0xff238855,
+                      ), // Set the cursor color directly on the TextField
                       decoration: InputDecoration(
                         hintText: 'Search',
-                        prefixIcon: Icon(Icons.search),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Colors.grey,
+                        ), // Updated icon color
                         suffixIcon: Row(
                           mainAxisSize:
                               MainAxisSize
@@ -76,7 +89,12 @@ class _GetScreenPageState extends State<GetScreenPage> {
                             // Clear (x) button
                             if (_searchController.text.isNotEmpty)
                               IconButton(
-                                icon: Icon(Icons.clear, color: Colors.grey),
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: Color(
+                                    0xff238855,
+                                  ), // Updated icon color
+                                ),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() {
@@ -87,7 +105,7 @@ class _GetScreenPageState extends State<GetScreenPage> {
 
                             // Filter icon
                             IconButton(
-                              icon: Icon(Icons.tune, color: Color(0xffffc533)),
+                              icon: Icon(Icons.tune, color: Color(0xfffd8536)),
                               onPressed: () {
                                 _showFilterDropdown(context);
                               },
@@ -110,7 +128,9 @@ class _GetScreenPageState extends State<GetScreenPage> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey),
+                          borderSide: BorderSide(
+                            color: Color(0xff238855),
+                          ), // Updated border color when focused
                         ),
                       ),
                     ),
@@ -158,7 +178,7 @@ class _GetScreenPageState extends State<GetScreenPage> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xffffc533),
+                          color: Color(0xfffd8536),
                         ),
                       ),
                     );
@@ -255,7 +275,7 @@ class _GetScreenPageState extends State<GetScreenPage> {
                                               fit: BoxFit.cover,
                                             )
                                             : Container(
-                                              color: Color(0xffffc533),
+                                              color: Color(0xfffd8536),
                                               child: Center(
                                                 child: Icon(
                                                   Icons.fastfood,
@@ -266,26 +286,51 @@ class _GetScreenPageState extends State<GetScreenPage> {
                                             ),
                                   ),
 
-                                  // Solid overlay with text at the bottom
+                                  // Gradient overlay with text at the bottom
                                   Positioned(
                                     left: 0,
-                                    right: 0,
                                     bottom: 0,
                                     child: Container(
-                                      color: Colors.grey.withOpacity(0.8),
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      child: Text(
-                                        name,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
+                                      height:
+                                          50, // Adjust height for the gradient
+                                      width:
+                                          MediaQuery.of(context).size.width /
+                                              2 -
+                                          20, // Calculate width for each grid item
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors
+                                                .transparent, // Start with transparent
+                                            Colors.black.withOpacity(
+                                              0.5,
+                                            ), // End with black with opacity
+                                          ],
                                         ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
+                                      ),
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        child: Align(
+                                          alignment: Alignment.bottomLeft,
+                                          child: Text(
+                                            name, // Use the food name
+                                            style: TextStyle(
+                                              color:
+                                                  Colors
+                                                      .white, // White text for contrast
+                                              fontWeight: FontWeight.bold,
+                                              fontSize:
+                                                  14, // Adjust font size as needed
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -312,31 +357,46 @@ class _GetScreenPageState extends State<GetScreenPage> {
         await showDialog<String>(
           context: context,
           builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text('Select Filter'),
-              content: SingleChildScrollView(
-                child: Column(
-                  children:
-                      _filterFields.map((field) {
-                        return ListTile(
-                          title: Text(
-                            field == 'All'
-                                ? 'All Fields'
-                                : field == 'name'
-                                ? 'By Food'
-                                : field == 'foodType'
-                                ? 'By Food Type'
-                                : field == 'location'
-                                ? 'By Location'
-                                : field == 'expiry'
-                                ? 'By Expiration Date'
-                                : 'By Donor',
-                          ),
-                          onTap: () {
-                            Navigator.pop(context, field);
-                          },
-                        );
-                      }).toList(),
+            return Theme(
+              data: ThemeData.light().copyWith(
+                dialogBackgroundColor:
+                    Colors.white, // Set background color to white
+              ),
+              child: AlertDialog(
+                title: Text(
+                  'Select Filter',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff238855), // Set title text color
+                  ),
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    children:
+                        _filterFields.map((field) {
+                          return ListTile(
+                            title: Text(
+                              field == 'All'
+                                  ? 'All Fields'
+                                  : field == 'name'
+                                  ? 'By Food'
+                                  : field == 'foodType'
+                                  ? 'By Food Type'
+                                  : field == 'location'
+                                  ? 'By Location'
+                                  : field == 'expiry'
+                                  ? 'By Expiration Date'
+                                  : 'By Donor',
+                              style: TextStyle(
+                                color: Colors.black, // Set text color
+                              ),
+                            ),
+                            onTap: () {
+                              Navigator.pop(context, field);
+                            },
+                          );
+                        }).toList(),
+                  ),
                 ),
               ),
             );

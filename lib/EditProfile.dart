@@ -20,8 +20,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   User? user = FirebaseAuth.instance.currentUser;
   String? currentImageUrl;
 
-  final CloudinaryService _cloudinaryService =
-      CloudinaryService(); // <-- create an instance here
+  final CloudinaryService _cloudinaryService = CloudinaryService();
 
   @override
   void initState() {
@@ -31,22 +30,65 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> loadUserData() async {
     if (user != null) {
-      DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user!.uid)
-              .get();
+      try {
+        DocumentSnapshot userDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user!.uid)
+                .get();
 
-      if (userDoc.exists) {
-        _nameController.text = userDoc['name'] ?? '';
-        currentImageUrl = userDoc['profileImage'];
+        if (userDoc.exists) {
+          setState(() {
+            _nameController.text = userDoc['name'] ?? '';
+            currentImageUrl = userDoc['profileImage'];
+          });
+        }
+      } catch (e) {
+        print('Error loading user data: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error loading user data')),
+        );
       }
     }
   }
 
-  Future<void> pickImage() async {
+  Future<void> showImagePickerOptions() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Capture from Camera'),
+                onTap: () async {
+                  Navigator.pop(context); // Close the bottom sheet
+                  await pickImage(ImageSource.camera);
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Gallery'),
+                onTap: () async {
+                  Navigator.pop(context); // Close the bottom sheet
+                  await pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> pickImage(ImageSource source) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await picker.pickImage(source: source);
 
     if (pickedFile != null) {
       setState(() {
@@ -84,7 +126,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       print('Error saving profile: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error saving profile')));
+      ).showSnackBar(const SnackBar(content: Text('Error saving profile')));
     } finally {
       setState(() {
         _isLoading = false;
@@ -107,7 +149,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Column(
                   children: [
                     GestureDetector(
-                      onTap: pickImage,
+                      onTap: showImagePickerOptions, // Show bottom sheet on tap
                       child: CircleAvatar(
                         radius: 50,
                         backgroundImage:
@@ -119,11 +161,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     : const AssetImage(
                                       'assets/default_avatar.png',
                                     )),
+                        backgroundColor: Colors.grey[300],
                         child: Align(
                           alignment: Alignment.bottomRight,
                           child: Container(
                             padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               color: Colors.white,
                             ),

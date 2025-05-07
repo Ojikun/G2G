@@ -32,6 +32,7 @@ dependencies:
     sdk: flutter
   flutter_flip_card: ^0.0.6
 
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -74,10 +75,9 @@ flutter:
   
   assets:
     - assets/google_logo.png
-    - assets/Home.png
-    - assets/Give.png
-    - assets/Get.png
-    - assets/Trade.png
+    - assets/give.png
+    - assets/get.png
+    - assets/trade.png
     - assets/Bag.png
     - assets/food1.png
     - assets/food2.png
@@ -92,8 +92,21 @@ flutter:
     - assets/logo.png
     - assets/welcome.png
     - assets/default_avatar.png
+    - assets/banner.png
     - assets/banner1.png
     - assets/banner2.png
+    - assets/login.png
+    - assets/signup.png
+    - assets/homeicon.png
+    - assets/accicon.png
+    - assets/notificon.png
+    - assets/chaticon.png
+    - assets/basketicon.png
+    - assets/thankyou.png
+    - assets/getoverlay.png
+    - assets/tradebutton.png
+
+    
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -16,7 +16,7 @@ class _WelcomePageState extends State<WelcomePage> {
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
@@ -29,7 +29,7 @@ class _WelcomePageState extends State<WelcomePage> {
 
                       // Flexible image placeholder
                       Container(
-                        height: screenHeight * 0.35, // 35% of screen height
+                        height: screenHeight * 0.42, // 35% of screen height
                         width: double.infinity,
                         color: Colors.white12,
                         child: Image.asset(
@@ -39,21 +39,23 @@ class _WelcomePageState extends State<WelcomePage> {
                           fit: BoxFit.contain,
                         ),
                       ),
-                      SizedBox(height: 40),
+                      SizedBox(height: 10),
 
-                      Text(
-                        "Welcome to G2G.",
-                        style: TextStyle(
-                          color: Colors.teal[800],
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                      Container(
+                        height: screenHeight * 0.08, // 35% of screen height
+                        width: double.infinity,
+                        color: Colors.white12,
+                        child: Image.asset(
+                          'assets/logo.png',
+                          width: 150, // You can adjust size
+                          height: 100,
+                          fit: BoxFit.contain,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 10),
 
                       Text(
-                        "Get what you need, Give what you can.",
+                        "Give what you can. Get what you need.",
                         style: TextStyle(color: Colors.black, fontSize: 20),
                         textAlign: TextAlign.center,
                       ),
@@ -62,9 +64,9 @@ class _WelcomePageState extends State<WelcomePage> {
                       // Sign Up Button
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal[700],
+                          backgroundColor: Color(0xfffd8536),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           minimumSize: Size(double.infinity, 50),
                         ),
@@ -81,17 +83,17 @@ class _WelcomePageState extends State<WelcomePage> {
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
-                      SizedBox(height: 20),
+                      SizedBox(height: 25),
 
                       // LogIn Button
                       OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           backgroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           minimumSize: Size(double.infinity, 50),
-                          side: BorderSide(color: Colors.teal),
+                          side: BorderSide(color: Color(0xff238855)),
                         ),
                         onPressed: () {
                           Navigator.push(
@@ -111,19 +113,19 @@ class _WelcomePageState extends State<WelcomePage> {
                 ),
               ),
 
-              SizedBox(height: 20),
+              SizedBox(height: 25),
 
               // T&C Text moved at the bottom
               Text.rich(
                 TextSpan(
                   text: "By Signing Up or Logging in, you agree to our ",
-                  style: TextStyle(color: Colors.black, fontSize: 14),
+                  style: TextStyle(color: Colors.black, fontSize: 12),
                   children: [
                     TextSpan(
-                      text: "Terms and Conditions",
+                      text: "Terms and Conditions.",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.teal[700],
+                        color: Color(0xfffd8536),
                       ),
                     ),
                   ],

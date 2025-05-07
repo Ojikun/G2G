@@ -31,6 +31,7 @@ class G2GApp extends StatelessWidget {
       title: 'G2G (Get what you need, give what you can)',
       theme: ThemeData(
         primarySwatch: Colors.teal,
+        scaffoldBackgroundColor: Colors.white, // Set background color to white
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,

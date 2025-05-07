@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'services/cloudinary_service.dart';
 import 'dart:io';
 import 'Homepage.dart';
+import 'services/badge_service.dart';
 
 class DateTextFormatter extends TextInputFormatter {
   @override
@@ -41,12 +42,20 @@ class GiveFoodPage extends StatefulWidget {
 class _GiveFoodPageState extends State<GiveFoodPage> {
   final PageController _pageController = PageController();
   int _currentStep = 0;
+  bool isLoading = false; // To show the loading spinner
+  bool showThankYou = false; // To show the thank-you animation
 
   // Fields
   final List<String> foodTypes = [
     'Fruits',
     'Vegetables',
+    'Grains & Bread',
     'Canned Goods',
+    'Dairy & Alternatives',
+    'Proteins',
+    'Snacks & Sweets',
+    'Beverages',
+    'Prepared Meals',
     'Others',
   ];
   String? selectedFoodType;
@@ -63,18 +72,21 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      floatingLabelStyle: TextStyle(
+        color: Color(0xff238855), // Focused label text color
+      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
       enabledBorder: OutlineInputBorder(
         borderSide: BorderSide(color: Colors.grey),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       focusedBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: Color(0xffffc533)),
-        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Color(0xff238855)),
+        borderRadius: BorderRadius.circular(16),
       ),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+      contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
     );
   }
 
@@ -105,13 +117,23 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
   Future<void> pickImage() async {
     showModalBottomSheet(
       context: context,
+      backgroundColor:
+          Colors.white, // Set the bottom sheet background color to white
       builder: (BuildContext context) {
         return SafeArea(
           child: Wrap(
             children: [
               ListTile(
-                leading: Icon(Icons.camera_alt),
-                title: Text('Capture from Camera'),
+                leading: Icon(
+                  Icons.camera_alt,
+                  color: Color(0xfffd8536), // Set the icon color
+                ),
+                title: Text(
+                  'Capture from Camera',
+                  style: TextStyle(
+                    color: Colors.grey[700], // Set the text color to grey[700]
+                  ),
+                ),
                 onTap: () async {
                   Navigator.pop(context); // Close the bottom sheet
                   final XFile? image = await _picker.pickImage(
@@ -125,8 +147,16 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.photo_library),
-                title: Text('Select from Gallery'),
+                leading: Icon(
+                  Icons.photo_library,
+                  color: Color(0xfffd8536), // Set the icon color
+                ),
+                title: Text(
+                  'Select from Gallery',
+                  style: TextStyle(
+                    color: Colors.grey[700], // Set the text color to grey[700]
+                  ),
+                ),
                 onTap: () async {
                   Navigator.pop(context); // Close the bottom sheet
                   final XFile? image = await _picker.pickImage(
@@ -161,8 +191,16 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
     }
 
     try {
+      // Show loading spinner
+      setState(() {
+        isLoading = true; // Add a loading state
+      });
+
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
+        setState(() {
+          isLoading = false;
+        });
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('User not logged in')));
@@ -192,23 +230,38 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
         'status': 'available',
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Donation uploaded successfully!')),
-      );
+      await BadgeService.checkAndAwardBadges(context, user.uid);
+
+      setState(() {
+        isLoading = false;
+        showThankYou = true; // Show the thank-you animation
+      });
+
+      // Wait for a few seconds before navigating back to the home screen
+      await Future.delayed(Duration(seconds: 3));
+
+      setState(() {
+        showThankYou = false; // Hide the thank-you animation
+      });
 
       // Navigate back to Home
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(),
-        ), // Replace with your HomeScreen widget
-        (route) => false, // Remove all previous routes
-      );
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+          (route) => false,
+        );
+      }
     } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
       print('Upload error: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error uploading donation')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error uploading donation: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -218,10 +271,10 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
         CircleAvatar(
           radius: 20,
           backgroundColor:
-              _currentStep == step ? Color(0xffffc533) : Colors.grey[300],
+              _currentStep == step ? Color(0xfffd8536) : Colors.grey[300],
           child: Text(
             label,
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
         SizedBox(height: 8),
@@ -240,45 +293,124 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
     );
   }
 
+  Widget stepIndicatorWithConnector() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          // Step 1
+          stepIndicator(0, "1"),
+          // Connector
+          Expanded(
+            child: Container(
+              height: 3,
+              color: _currentStep >= 1 ? Color(0xfffd8536) : Colors.grey[300],
+            ),
+          ),
+          // Step 2
+          stepIndicator(1, "2"),
+          // Connector
+          Expanded(
+            child: Container(
+              height: 3,
+              color: _currentStep >= 2 ? Color(0xfffd8536) : Colors.grey[300],
+            ),
+          ),
+          // Step 3
+          stepIndicator(2, "3"),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => HomeScreen()),
-              (route) => false, // Remove all previous routes
+              (route) => false,
             );
           },
         ),
-        title: Text('Give', style: TextStyle(color: Colors.black)),
-        backgroundColor: Color(0xffffc533),
+        title: Text(
+          'Give',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
+        backgroundColor: Color(0xff238855),
         centerTitle: true,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Step Indicator
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                stepIndicator(0, "1"),
-                stepIndicator(1, "2"),
-                stepIndicator(2, "3"),
-              ],
-            ),
+          Column(
+            children: [
+              // Step Indicator with Connectors
+              stepIndicatorWithConnector(),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics:
+                      NeverScrollableScrollPhysics(), // Disable swipe gestures
+                  children: [step1(), step2(), step3()],
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: NeverScrollableScrollPhysics(), // Disable swipe gestures
-              children: [step1(), step2(), step3()],
+
+          // Loading Spinner
+          if (isLoading)
+            Container(
+              color: Colors.black.withOpacity(
+                0.5,
+              ), // Semi-transparent background
+              child: Center(
+                child: CircularProgressIndicator(color: Color(0xff238855)),
+              ),
             ),
-          ),
+
+          // Thank-You Animation
+          if (showThankYou)
+            Container(
+              color: Colors.black.withOpacity(
+                0.5,
+              ), // Semi-transparent background
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Animated Image
+                    AnimatedScale(
+                      scale: 1.0,
+                      duration: Duration(seconds: 1),
+                      curve: Curves.easeInOut,
+                      child: Image.asset(
+                        'assets/thankyou.png', // Replace with your asset path
+                        height: 300,
+                        width: 300,
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    // Text(
+                    //   "Thank you for giving!",
+                    //   style: TextStyle(
+                    //     fontSize: 18,
+                    //     fontWeight: FontWeight.bold,
+                    //     color: Colors.white,
+                    //   ),
+                    //   textAlign: TextAlign.center,
+                    // ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -295,7 +427,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
             child: Container(
               height: 200,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.black, width: 0.8),
+                border: Border.all(color: Color(0xff238855), width: 0.8),
                 borderRadius: BorderRadius.circular(16),
                 color: Colors.white.withOpacity(0.2),
               ),
@@ -308,14 +440,14 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                             Icon(
                               Icons.add_a_photo,
                               size: 50,
-                              color: Color(0xffffc533),
+                              color: Color(0xfffd8536),
                             ),
                             SizedBox(height: 10),
                             Text(
                               "Add an Image",
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Color(0xffffc533),
+                                color: Colors.grey[700],
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -333,23 +465,21 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
           ),
           SizedBox(height: 20),
           // "Next" Button in Step 1
+          Spacer(), // Pushes the button to the bottom
           Align(
             alignment: Alignment.center,
             child: SizedBox(
               width: 150, // Set a fixed width for the button
               child: ElevatedButton(
-                onPressed:
-                    selectedImage == null
-                        ? null
-                        : nextStep, // Disable if no image
+                onPressed: selectedImage == null ? null : nextStep,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xffffc533),
+                  backgroundColor: Color(0xfffd8536),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   padding: EdgeInsets.symmetric(vertical: 14), // Match size
                 ),
-                child: Text("Next", style: TextStyle(color: Colors.black)),
+                child: Text("Next", style: TextStyle(color: Colors.white)),
               ),
             ),
           ),
@@ -384,12 +514,14 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                 "Food Type",
                 "Select Food Type",
               ),
+              dropdownColor: Colors.white,
             ),
             const SizedBox(height: 15),
 
             // Food Name Input
             TextField(
               controller: nameController,
+              cursorColor: Color(0xff238855),
               decoration: customInputDecoration("Food Name", "Enter food name"),
             ),
             const SizedBox(height: 15),
@@ -405,6 +537,32 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                   initialDate: DateTime.now(), // Set the initial date to today
                   firstDate: DateTime.now(), // Prevent selecting past dates
                   lastDate: DateTime(2100), // Set an upper limit for the date
+                  builder: (BuildContext context, Widget? child) {
+                    return Theme(
+                      data: ThemeData.light().copyWith(
+                        primaryColor: Color(
+                          0xff238855,
+                        ), // Header background color
+                        textButtonTheme: TextButtonThemeData(
+                          style: TextButton.styleFrom(
+                            foregroundColor: Color(
+                              0xff238855,
+                            ), // Button text color
+                          ),
+                        ),
+                        dialogBackgroundColor:
+                            Colors.white, // Background color of the dialog
+                        colorScheme: ColorScheme.light(
+                          primary: Color(
+                            0xff238855,
+                          ), // Header text and selected date color
+                          onPrimary: Colors.white, // Text color on header
+                          onSurface: Colors.black, // Text color on calendar
+                        ),
+                      ),
+                      child: child!,
+                    );
+                  },
                 );
 
                 if (pickedDate != null) {
@@ -422,22 +580,19 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 1),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 color: Colors.white,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Quantity',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  const Text('Quantity', style: TextStyle(fontSize: 16)),
                   Row(
                     children: [
                       IconButton(
                         icon: Icon(
                           Icons.remove_circle_outline,
-                          color: Color(0xffffc533),
+                          color: Color(0xfffd8536),
                         ),
                         onPressed: () {
                           setState(() {
@@ -455,7 +610,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                       IconButton(
                         icon: Icon(
                           Icons.add_circle_outline,
-                          color: Color(0xffffc533),
+                          color: Color(0xfffd8536),
                         ),
                         onPressed: () {
                           setState(() {
@@ -473,6 +628,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
             // Note Input
             TextField(
               controller: noteController,
+              cursorColor: Color(0xff238855),
               decoration: customInputDecoration(
                 "Note",
                 "Additional details here",
@@ -495,16 +651,16 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           selectedOption == 'DROP-OFF'
-                              ? Color(0xffffc533)
+                              ? Color(0xfffd8536)
                               : Colors.white,
                       foregroundColor:
                           selectedOption == 'DROP-OFF'
                               ? Colors.white
                               : Colors.black,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      side: BorderSide(color: Color(0xffffc533)),
+                      side: BorderSide(color: Color(0xfffd8536)),
                     ),
                     child: const Text("DROP-OFF"),
                   ),
@@ -521,16 +677,16 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           selectedOption == 'PICKUP'
-                              ? Color(0xffffc533)
+                              ? Color(0xfffd8536)
                               : Colors.white,
                       foregroundColor:
                           selectedOption == 'PICKUP'
                               ? Colors.white
                               : Colors.black,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      side: BorderSide(color: Color(0xffffc533)),
+                      side: BorderSide(color: Color(0xfffd8536)),
                     ),
                     child: const Text("PICKUP"),
                   ),
@@ -543,12 +699,13 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
             if (selectedOption == 'PICKUP')
               TextField(
                 controller: locationController,
+                cursorColor: Color(0xff238855),
                 decoration: customInputDecoration(
                   "Pickup Location",
                   "Enter pickup location",
                 ),
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 83),
 
             // Navigation Buttons
             // Step 2 Buttons
@@ -561,10 +718,10 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: Color(0xff238855)),
                       ),
-                      // side: BorderSide(color: Colors.grey), // Add border
-                      padding: EdgeInsets.symmetric(vertical: 14), // Match size
+                      padding: EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: Text(
                       "Back",
@@ -572,7 +729,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                     ),
                   ),
                 ),
-                SizedBox(width: 10), // Add spacing between buttons
+                SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
@@ -591,15 +748,15 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                       nextStep();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xffffc533),
+                      backgroundColor: Color(0xfffd8536),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      padding: EdgeInsets.symmetric(vertical: 14), // Match size
+                      padding: EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: Text(
                       "Next",
-                      style: TextStyle(fontSize: 16, color: Colors.black),
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
                 ),
@@ -630,7 +787,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
 
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.grey.shade300),
                 boxShadow: [
                   BoxShadow(
@@ -709,7 +866,7 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                 ],
               ),
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 98),
 
             // Buttons Row
             // Step 3 Buttons
@@ -722,7 +879,8 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: Color(0xff238855)),
                       ),
                       // side: BorderSide(color: Colors.grey), // Add border
                       padding: EdgeInsets.symmetric(vertical: 14), // Match size
@@ -737,16 +895,17 @@ class _GiveFoodPageState extends State<GiveFoodPage> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: uploadDonation,
+                    // After successful donation
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xffffc533),
+                      backgroundColor: Color(0xfffd8536),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       padding: EdgeInsets.symmetric(vertical: 14), // Match size
                     ),
                     child: Text(
                       "Give",
-                      style: TextStyle(fontSize: 16, color: Colors.black),
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
                 ),

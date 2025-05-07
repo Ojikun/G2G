@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'Basket.dart';
+import 'Profile.dart';
 import 'widgets/get_food_flow.dart';
 import 'widgets/quota_utils.dart';
 import 'widgets/full_screen_image.dart';
@@ -29,16 +30,20 @@ class FoodScreen extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () {
             Navigator.pop(context); // Go back to the previous screen
           },
         ),
-        title: const Text(
+        title: Text(
           'Food Details',
-          style: TextStyle(color: Colors.black),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
         ),
-        backgroundColor: const Color(0xffffc533),
+        backgroundColor: const Color(0xff238855),
         actions: [
           StreamBuilder<QuerySnapshot>(
             stream:
@@ -56,7 +61,12 @@ class FoodScreen extends StatelessWidget {
               return Stack(
                 children: [
                   IconButton(
-                    icon: Image.asset('assets/Bag.png', width: 45, height: 40),
+                    icon: Image.asset(
+                      'assets/basketicon.png',
+                      width: 45,
+                      height: 40,
+                      color: Colors.white,
+                    ),
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -71,7 +81,7 @@ class FoodScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: const BoxDecoration(
-                          color: Colors.red,
+                          color: Color(0xfffd8536),
                           shape: BoxShape.circle,
                         ),
                         child: Text(
@@ -150,50 +160,93 @@ class FoodScreen extends StatelessWidget {
                         },
                         child: Hero(
                           tag: imageUrl,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child:
-                                imageUrl.isNotEmpty
-                                    ? Image.network(
-                                      imageUrl,
-                                      width: 250,
-                                      height: 250,
-                                      fit: BoxFit.cover,
-                                    )
-                                    : Container(
-                                      width: 250,
-                                      height: 250,
-                                      color: Colors.grey[200],
-                                      child: Icon(
-                                        Icons.fastfood,
-                                        size: 100,
-                                        color: Color(0xffffc533),
+                          child: InteractiveViewer(
+                            minScale: 0.5, // Allow zooming out
+                            maxScale: 4.0, // Allow zooming in
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                16,
+                              ), // Add border radius
+                              child:
+                                  imageUrl.isNotEmpty
+                                      ? Image.network(
+                                        imageUrl,
+                                        height: 300,
+                                        fit:
+                                            BoxFit
+                                                .cover, // Ensure the image adapts to its original size
+                                      )
+                                      : Container(
+                                        height: 300,
+                                        color: Colors.grey[200],
+                                        child: Icon(
+                                          Icons.fastfood,
+                                          size: 100,
+                                          color: Color(0xff238855),
+                                        ),
                                       ),
-                                    ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(height: 24),
+                    SizedBox(height: 10),
                     Text(
                       name,
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
+                        color: Color(0xffFD8536),
                       ),
                     ),
                     SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.person, color: Colors.grey[600]),
+                        Icon(Icons.person, color: Color(0xff238855), size: 20),
                         SizedBox(width: 8),
-                        Text('Donor: $donor', style: TextStyle(fontSize: 16)),
+                        Text(
+                          'Donor: ',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: const Color.fromARGB(
+                              255,
+                              17,
+                              15,
+                              15,
+                            ), // Regular text color for the label
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => ProfileScreen(
+                                      otherUserId:
+                                          data['userId'], // Pass the donor's UID
+                                    ),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            donor, // Only the donor's name
+                            style: TextStyle(
+                              fontSize: 16,
+                              // Green color for the donor's name
+                              decoration:
+                                  TextDecoration
+                                      .underline, // Underline the donor's name
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(height: 16),
+                    SizedBox(height: 10),
                     Card(
+                      color: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       elevation: 2,
                       margin: EdgeInsets.zero,
@@ -230,7 +283,7 @@ class FoodScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox(height: 24),
+                    SizedBox(height: 10),
 
                     FutureBuilder<QuerySnapshot>(
                       future:
@@ -305,7 +358,10 @@ class FoodScreen extends StatelessWidget {
                                         ),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
-                                            8,
+                                            16,
+                                          ),
+                                          side: BorderSide(
+                                            color: Color(0xff238855),
                                           ),
                                         ),
                                       ),
@@ -333,13 +389,13 @@ class FoodScreen extends StatelessWidget {
                                         );
                                       },
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Color(0xffffc533),
+                                        backgroundColor: Color(0xfffd8536),
                                         padding: EdgeInsets.symmetric(
                                           vertical: 14,
                                         ),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
-                                            8,
+                                            16,
                                           ),
                                         ),
                                       ),
@@ -347,7 +403,7 @@ class FoodScreen extends StatelessWidget {
                                         'Get',
                                         style: TextStyle(
                                           fontSize: 16,
-                                          color: Colors.black,
+                                          color: Colors.white,
                                         ),
                                       ),
                                     ),
@@ -403,6 +459,7 @@ void _showAddToBasketSheet(
 
   showModalBottomSheet(
     context: context,
+    backgroundColor: Colors.white,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -423,7 +480,7 @@ void _showAddToBasketSheet(
                     height: 5,
                     decoration: BoxDecoration(
                       color: Colors.grey[400],
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                 ),
@@ -434,7 +491,7 @@ void _showAddToBasketSheet(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                       child:
                           imageUrl.isNotEmpty
                               ? Image.network(
@@ -449,7 +506,7 @@ void _showAddToBasketSheet(
                                 color: Colors.grey[200],
                                 child: Icon(
                                   Icons.fastfood,
-                                  color: Color(0xffffc533),
+                                  color: Color(0xfffd8536),
                                   size: 30,
                                 ),
                               ),
@@ -506,7 +563,7 @@ void _showAddToBasketSheet(
                       children: [
                         IconButton(
                           icon: Icon(Icons.remove_circle_outline),
-                          color: Color(0xffffc533),
+                          color: Color(0xfffd8536),
                           onPressed:
                               selectedQuantity > 1
                                   ? () => setState(() => selectedQuantity--)
@@ -521,7 +578,7 @@ void _showAddToBasketSheet(
                         ),
                         IconButton(
                           icon: Icon(Icons.add_circle_outline),
-                          color: Color(0xffffc533),
+                          color: Color(0xfffd8536),
                           onPressed:
                               selectedQuantity < maxQuantity
                                   ? () => setState(() => selectedQuantity++)
@@ -555,6 +612,7 @@ void _showAddToBasketSheet(
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Added $selectedQuantity to Basket!'),
+                            backgroundColor: Color(0xff238855),
                           ),
                         );
                       } else {
@@ -565,6 +623,7 @@ void _showAddToBasketSheet(
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Added $selectedQuantity to Basket!'),
+                            backgroundColor: Color(0xff238855),
                           ),
                         );
                       }
@@ -572,15 +631,15 @@ void _showAddToBasketSheet(
                       Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xffffc533),
+                      backgroundColor: Color(0xfffd8536),
                       padding: EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     child: Text(
                       'Add to Basket',
-                      style: TextStyle(fontSize: 16, color: Colors.black),
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
                 ),
@@ -615,6 +674,7 @@ void _showGetQuantitySheet({
 
   showModalBottomSheet(
     context: context,
+    backgroundColor: Colors.white,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -634,7 +694,7 @@ void _showGetQuantitySheet({
                     height: 5,
                     decoration: BoxDecoration(
                       color: Colors.grey[400],
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                 ),
@@ -645,7 +705,7 @@ void _showGetQuantitySheet({
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                       child:
                           imageUrl.isNotEmpty
                               ? Image.network(
@@ -660,7 +720,7 @@ void _showGetQuantitySheet({
                                 color: Colors.grey[200],
                                 child: Icon(
                                   Icons.fastfood,
-                                  color: Color(0xffffc533),
+                                  color: Color(0xfffd8536),
                                   size: 30,
                                 ),
                               ),
@@ -718,7 +778,7 @@ void _showGetQuantitySheet({
                       children: [
                         IconButton(
                           icon: Icon(Icons.remove_circle_outline),
-                          color: Color(0xffffc533),
+                          color: Color(0xfffd8536),
                           onPressed:
                               selectedQuantity > 1
                                   ? () => setState(() => selectedQuantity--)
@@ -733,7 +793,7 @@ void _showGetQuantitySheet({
                         ),
                         IconButton(
                           icon: Icon(Icons.add_circle_outline),
-                          color: Color(0xffffc533),
+                          color: Color(0xfffd8536),
                           onPressed:
                               selectedQuantity < availableToSelect
                                   ? () => setState(() => selectedQuantity++)
@@ -780,15 +840,15 @@ void _showGetQuantitySheet({
                     },
 
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xffffc533),
+                      backgroundColor: Color(0xfffd8536),
                       padding: EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     child: Text(
                       'Confirm Get',
-                      style: TextStyle(fontSize: 16, color: Colors.black),
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
                 ),

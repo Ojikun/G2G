@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:ui';
-
+import 'History.dart';
 import 'Give.dart';
 import 'Get.dart';
 import 'Trade.dart';
 import 'Basket.dart';
 import 'Food.dart';
+import 'ChatList.dart';
+import 'Notif.dart';
+import 'Profile.dart';
 import 'Welcome.dart';
-import 'Header.dart';
 import 'services/bottom_nav_bar.dart';
+import 'services/badge_service.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -19,13 +21,26 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBadges();
+  }
+
+  Future<void> _checkBadges() async {
+    if (currentUserId != null && mounted) {
+      await BadgeService.checkAndAwardBadges(context, currentUserId!);
+    }
+  }
 
   final List<Widget> _pages = [
     HomePageContent(),
-    GiveFoodPage(),
-    GetScreenPage(),
-    TradeHomePage(),
     BasketScreen(),
+    ChatListScreen(),
+    NotifPage(),
+    ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -36,26 +51,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      Future.microtask(() {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => WelcomePage()),
+          (route) => false,
+        );
+      });
+      return const SizedBox(); // Return an empty widget while redirecting
+    }
     return Scaffold(
-      body: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            // Show a loading indicator only for the body
-            return Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasData) {
-            // Show the selected page when the user is authenticated
-            return _pages[_selectedIndex];
-          } else {
-            // Show the WelcomePage if no user is logged in
-            return WelcomePage();
-          }
-        },
-      ),
-      bottomNavigationBar: BottomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Main content
+          IndexedStack(index: _selectedIndex, children: _pages),
+
+          // Floating navigation bar
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: BottomNavBar(
+              selectedIndex: _selectedIndex,
+              onItemTapped: _onItemTapped,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -78,246 +102,375 @@ class HomePageContent extends StatelessWidget {
     return null; // Return null if no image is found or error occurs
   }
 
+  Future<void> _handleAction(BuildContext context, String userId) async {
+    try {
+      await BadgeService.checkAndAwardBadges(context, userId);
+    } catch (e) {
+      print('Error checking badges: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
     if (currentUserId == null) {
-      return Center(child: Text('User not logged in.'));
+      return const Center(child: Text('User not logged in.'));
     }
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
           children: [
-            // Fixed Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Header(currentUserId: currentUserId),
+            // Logo (Header)
+            SizedBox(
+              height: 50,
+              child: Center(
+                child: Image.asset(
+                  'assets/logo.png',
+                  width: 80,
+                  height: 50,
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
 
-            // Scrollable Content
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16.0),
-                children: [
-                  // Banner
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => GiveFoodPage()),
-                      );
-                    },
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(
-                        'assets/banner2.png',
-                        height: 120,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
+            const SizedBox(height: 20), // Add spacing after the logo
+            // Banner
+            GestureDetector(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(
+                  'assets/banner.png',
+                  height: 120,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
 
-                  SizedBox(height: 25), // Add spacing after the banner
-                  // Section 1: Get Now!
-                  Container(
-                    color:
-                        Colors.grey[180], // Background color for this section
-                    padding: const EdgeInsets.all(
-                      0,
-                    ), // Add padding inside the container
-                    margin: const EdgeInsets.only(
-                      bottom: 16,
-                    ), // Add margin between sections
-                    child: Section(
-                      title: 'Get Now!',
-                      query: FirebaseFirestore.instance
+            const SizedBox(height: 20), // Add spacing after the banner
+            // Row of Button Icons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Give Button
+                _buildIconButton(
+                  context,
+                  'assets/give.png',
+                  'Give',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => GiveFoodPage()),
+                  ),
+                ),
+
+                // Get Button
+                _buildIconButton(
+                  context,
+                  'assets/get.png',
+                  'Get',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => GetScreenPage()),
+                  ),
+                ),
+
+                // Trade Button
+                _buildIconButton(
+                  context,
+                  'assets/trade.png',
+                  'Trade',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => TradeHomePage()),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 25), // Add spacing after the row of buttons
+            // Section 1: Available
+            _buildSection(
+              context,
+              title: 'Available',
+              query: FirebaseFirestore.instance
+                  .collection('donations')
+                  .where('status', isEqualTo: 'available')
+                  .where('userId', isNotEqualTo: currentUserId)
+                  .limit(4),
+              onSeeAllPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => GetScreenPage()),
+                );
+              },
+              emptySectionMessage: 'No available donations.',
+            ),
+
+            // Section 2: My Donations
+            _buildSection(
+              context,
+              title: 'My Donations',
+              query: FirebaseFirestore.instance
+                  .collection('donations')
+                  .where('userId', isEqualTo: currentUserId)
+                  .orderBy('timestamp', descending: true)
+                  .limit(4),
+              onSeeAllPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => HistoryScreen()),
+                );
+              },
+              emptySectionMessage: 'Give now and earn a badge!',
+            ),
+
+            // Section 3: Get Again!
+            _buildSection(
+              context,
+              title: 'Get Again!',
+              query: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUserId)
+                  .collection('gets')
+                  .orderBy('timestamp', descending: true)
+                  .limit(5),
+              onSeeAllPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const HistoryScreen(),
+                  ),
+                );
+              },
+              emptySectionMessage: 'No items found.',
+              customItemBuilder: (context, doc) {
+                final data = doc.data() as Map<String, dynamic>;
+
+                if (data['foodId'] == null) {
+                  return const SizedBox(); // Skip if no foodId
+                }
+
+                return FutureBuilder<DocumentSnapshot>(
+                  future:
+                      FirebaseFirestore.instance
                           .collection('donations')
-                          .where('status', isEqualTo: 'available')
-                          .where('userId', isNotEqualTo: currentUserId)
-                          .limit(4),
-                      onSeeAllPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => GetScreenPage()),
-                        );
-                      },
-                      emptySectionMessage: 'No available donations.',
-                    ),
-                  ),
+                          .doc(data['foodId'])
+                          .get(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return _buildLoadingCard();
+                    }
 
-                  // Section 2: My Donations
-                  Container(
-                    color:
-                        Colors.grey[180], // Background color for this section
-                    padding: const EdgeInsets.all(
-                      0,
-                    ), // Add padding inside the container
-                    margin: const EdgeInsets.only(
-                      bottom: 16,
-                    ), // Add margin between sections
-                    child: Section(
-                      title: 'My Donations',
-                      query: FirebaseFirestore.instance
-                          .collection('donations')
-                          .where(
-                            'userId',
-                            isEqualTo: currentUserId,
-                          ) // Filter by current user
-                          .orderBy(
-                            'timestamp',
-                            descending: true,
-                          ) // Order by timestamp (latest first)
-                          .limit(4), // Limit to 4 items
-                      onEmptySectionPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => GiveFoodPage()),
-                        );
-                      },
-                      emptySectionMessage: 'Give now!',
-                    ),
-                  ),
+                    if (!snapshot.hasData || !snapshot.data!.exists) {
+                      return _buildErrorCard();
+                    }
 
-                  // Section 3: Get Again!
-                  Container(
-                    color:
-                        Colors.grey[180], // Background color for this section
-                    padding: const EdgeInsets.all(
-                      0,
-                    ), // Add padding inside the container
-                    margin: const EdgeInsets.only(
-                      bottom: 16,
-                    ), // Add margin between sections
-                    child: Section(
-                      title: 'Get Again!',
-                      query: FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(currentUserId)
-                          .collection('gets'),
-                      onEmptySectionPressed: null, // No action for empty state
-                      emptySectionMessage: 'No items found.',
-                      onSeeAllPressed: null, // No "See all" for this section
-                      customItemBuilder: (context, doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final foodId = data['foodId'] ?? '';
-                        final foodName = data['foodName'] ?? 'No Name';
+                    final donationData =
+                        snapshot.data!.data() as Map<String, dynamic>;
+                    final foodName = donationData['name'] ?? 'No Name';
+                    final imageUrl = donationData['imageUrl'] ?? '';
 
-                        return FutureBuilder<DocumentSnapshot>(
-                          future:
-                              FirebaseFirestore.instance
-                                  .collection('donations')
-                                  .doc(foodId)
-                                  .get(),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Center(child: CircularProgressIndicator());
-                            }
-                            if (!snapshot.hasData || !snapshot.data!.exists) {
-                              return Container(
-                                width: 150,
-                                margin: EdgeInsets.only(right: 10),
-                                child: Center(child: Text('No Image')),
-                              );
-                            }
+                    return _buildFoodCard(
+                      context: context,
+                      foodId: data['foodId'],
+                      foodName: foodName,
+                      imageUrl: imageUrl,
+                    );
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 80), // Add spacing at the bottom
+          ],
+        ),
+      ),
+    );
+  }
 
-                            final donationData =
-                                snapshot.data!.data() as Map<String, dynamic>;
-                            final imageUrl = donationData['imageUrl'] ?? '';
+  Widget _buildLoadingCard() {
+    return Container(
+      width: 180,
+      margin: const EdgeInsets.only(right: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: Colors.grey, width: 0.5),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xff238855)),
+        ),
+      ),
+    );
+  }
 
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (_) => FoodScreen(
-                                          foodId: foodId,
-                                        ), // Pass foodId
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                width: 180, // Adjust width to 200
-                                margin: EdgeInsets.only(right: 10),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16.0),
-                                  border: Border.all(
-                                    color: Colors.grey, // Border color
-                                    width: 0.5, // Border width
-                                  ),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16.0),
-                                  child: Stack(
-                                    children: [
-                                      // Background image
-                                      Positioned.fill(
-                                        child:
-                                            imageUrl.isNotEmpty
-                                                ? Image.network(
-                                                  imageUrl,
-                                                  fit: BoxFit.cover,
-                                                )
-                                                : Container(
-                                                  color: Color(0xffffc533),
-                                                  child: Center(
-                                                    child: Icon(
-                                                      Icons.fastfood,
-                                                      size: 60,
-                                                      color: Color(0xffffc533),
-                                                    ),
-                                                  ),
-                                                ),
-                                      ),
+  Widget _buildErrorCard() {
+    return Container(
+      width: 180,
+      margin: const EdgeInsets.only(right: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: Colors.grey, width: 0.5),
+      ),
+      child: const Center(
+        child: Icon(Icons.error_outline, color: Colors.grey, size: 32),
+      ),
+    );
+  }
 
-                                      // Solid background with text in the bottom-left corner
-                                      Positioned(
-                                        left: 0,
-                                        bottom: 0,
-                                        child: Container(
-                                          color: Colors.grey.withOpacity(
-                                            0.6,
-                                          ), // Solid background with opacity
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          width:
-                                              200, // Match the width of the image
-                                          child: Text(
-                                            foodName,
-                                            style: TextStyle(
-                                              color:
-                                                  Colors
-                                                      .white, // White text for contrast
-                                              fontWeight: FontWeight.bold,
-                                              fontSize:
-                                                  14, // Adjust font size as needed
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 1,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+  Widget _buildFoodCard({
+    required BuildContext context,
+    required String foodId,
+    required String foodName,
+    required String imageUrl,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => FoodScreen(foodId: foodId)),
+        );
+      },
+      child: Container(
+        width: 180,
+        margin: const EdgeInsets.only(right: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(color: Colors.grey, width: 0.5),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16.0),
+          child: Stack(
+            children: [
+              // Background image
+              Positioned.fill(
+                child:
+                    imageUrl.isNotEmpty
+                        ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[100],
+                              child: const Icon(
+                                Icons.fastfood,
+                                size: 60,
+                                color: Colors.grey,
                               ),
                             );
                           },
-                        );
-                      },
+                        )
+                        : Container(
+                          color: Colors.grey[100],
+                          child: const Icon(
+                            Icons.fastfood,
+                            size: 60,
+                            color: Colors.grey,
+                          ),
+                        ),
+              ),
+              // Gradient overlay with food name
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.7),
+                      ],
                     ),
                   ),
-                ],
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Text(
+                      foodName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildIconButton(
+    BuildContext context,
+    String assetPath,
+    String label,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: () async {
+        onTap();
+        if (FirebaseAuth.instance.currentUser?.uid != null) {
+          await _handleAction(context, FirebaseAuth.instance.currentUser!.uid);
+        }
+      },
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              assetPath,
+              height: 60,
+              width: 60,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection(
+    BuildContext context, {
+    required String title,
+    required Query query,
+    required VoidCallback onSeeAllPressed,
+    required String emptySectionMessage,
+    Widget Function(BuildContext, QueryDocumentSnapshot)? customItemBuilder,
+  }) {
+    return Container(
+      color: Colors.grey[50],
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Section(
+        title: title,
+        query: query,
+        onSeeAllPressed: onSeeAllPressed,
+        emptySectionMessage: emptySectionMessage,
+        customItemBuilder: customItemBuilder,
       ),
     );
   }
@@ -351,21 +504,26 @@ class Section extends StatelessWidget {
           children: [
             Text(
               title,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
             if (onSeeAllPressed != null)
               GestureDetector(
                 onTap: onSeeAllPressed,
                 child: Text(
                   'See all',
-                  style: TextStyle(color: Color(0xff140f1f)),
+                  style: TextStyle(
+                    color: const Color(0xff238855).withOpacity(0.5),
+                    fontSize: 14,
+                  ),
                 ),
               ),
           ],
         ),
-
-        // Remove or reduce unnecessary spacing
-        SizedBox(height: 10), // Adjust this value or remove it
+        const SizedBox(height: 10), // Adjust spacing
         // Firestore Horizontal List
         StreamBuilder<QuerySnapshot>(
           stream: query.snapshots(),
@@ -374,7 +532,9 @@ class Section extends StatelessWidget {
               return Text('Error: ${snapshot.error}');
             }
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xff238855)),
+              );
             }
 
             final docs = snapshot.data!.docs;
@@ -385,16 +545,15 @@ class Section extends StatelessWidget {
                 child: Container(
                   height: 120,
                   decoration: BoxDecoration(
-                    // border: Border.all(color: Colors.grey),
                     borderRadius: BorderRadius.circular(16.0),
                   ),
                   child: Center(
                     child: Text(
                       emptySectionMessage,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.teal,
+                        color: Colors.grey,
                       ),
                     ),
                   ),
@@ -406,26 +565,8 @@ class Section extends StatelessWidget {
               height: 150, // Adjust height as needed
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: docs.length + 1, // Add 1 for the arrow
+                itemCount: docs.length,
                 itemBuilder: (context, index) {
-                  if (index == docs.length) {
-                    // Arrow at the end
-                    return GestureDetector(
-                      onTap: onSeeAllPressed,
-                      child: Container(
-                        width: 50,
-                        alignment: Alignment.center,
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.arrow_forward_ios,
-                            color: Color(0xffffc533),
-                          ),
-                          onPressed:
-                              onSeeAllPressed, // Trigger the same action as the GestureDetector
-                        ),
-                      ),
-                    );
-                  }
                   final doc = docs[index];
 
                   // Use customItemBuilder if provided, otherwise fallback to default
@@ -448,14 +589,11 @@ class Section extends StatelessWidget {
                       );
                     },
                     child: Container(
-                      width: 180, // Adjust width to 200
-                      margin: EdgeInsets.only(right: 10),
+                      width: 180,
+                      margin: const EdgeInsets.only(right: 10),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16.0),
-                        border: Border.all(
-                          color: Colors.grey, // Border color
-                          width: 0.5, // Border width
-                        ),
+                        border: Border.all(color: Colors.grey, width: 0.5),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16.0),
@@ -471,7 +609,7 @@ class Section extends StatelessWidget {
                                       )
                                       : Container(
                                         color: Colors.teal[100],
-                                        child: Center(
+                                        child: const Center(
                                           child: Icon(
                                             Icons.fastfood,
                                             size: 60,
@@ -480,30 +618,39 @@ class Section extends StatelessWidget {
                                         ),
                                       ),
                             ),
-
-                            // Solid background with text in the bottom-left corner
+                            // Gradient overlay with food name
                             Positioned(
                               left: 0,
+                              right: 0,
                               bottom: 0,
                               child: Container(
-                                color: Colors.grey.withOpacity(
-                                  0.6,
-                                ), // Solid background with opacity
-                                padding: EdgeInsets.symmetric(
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withOpacity(0.7),
+                                    ],
+                                  ),
+                                ),
+                                padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 4,
                                 ),
-                                width: 200, // Match the width of the image
-                                child: Text(
-                                  foodName,
-                                  style: TextStyle(
-                                    color:
-                                        Colors.white, // White text for contrast
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14, // Adjust font size as needed
+                                child: Align(
+                                  alignment: Alignment.bottomLeft,
+                                  child: Text(
+                                    foodName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
                                 ),
                               ),
                             ),

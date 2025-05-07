@@ -7,6 +7,7 @@ import 'services/cloudinary_service.dart';
 import 'services/trade_service.dart';
 import 'widgets/full_screen_image.dart';
 import 'Homepage.dart';
+import 'Profile.dart';
 
 class TradeHomePage extends StatefulWidget {
   @override
@@ -23,6 +24,28 @@ class _TradeHomePageState extends State<TradeHomePage> {
   String? _profileImageUrl;
   String? _username;
   final CloudinaryService _cloudinaryService = CloudinaryService();
+
+  InputDecoration customInputDecoration(String label, String hint) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      floatingLabelStyle: TextStyle(
+        color: Color(0xff238855), // Focused label text color
+      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Color(0xff238855)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+    );
+  }
 
   @override
   void initState() {
@@ -180,14 +203,18 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
+                                        color: Color(0xff238855),
                                       ),
                                     ),
                                     ElevatedButton(
                                       onPressed: _submitTrade,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Color(0xffffc533),
+                                        backgroundColor: Color(0xfffd8536),
                                       ),
-                                      child: Text('Post'),
+                                      child: Text(
+                                        'Post',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -207,7 +234,7 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                           _profileImageUrl != null
                                               ? NetworkImage(_profileImageUrl!)
                                               : null,
-                                      backgroundColor: Color(0xffffc533),
+                                      backgroundColor: Color(0xff238855),
                                       child:
                                           _profileImageUrl == null
                                               ? Icon(
@@ -239,10 +266,22 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                 child: TextField(
                                   controller: _tradeController,
                                   maxLines: 5,
+                                  cursorColor: Color(
+                                    0xff238855,
+                                  ), // Set the cursor color
                                   decoration: InputDecoration(
                                     hintText: 'Say something...',
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: Color(
+                                          0xff238855,
+                                        ), // Set the focused border color
+                                        width: 2,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -256,10 +295,22 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                 ),
                                 child: TextField(
                                   controller: _foodNameController,
+                                  cursorColor: Color(
+                                    0xff238855,
+                                  ), // Set the cursor color
                                   decoration: InputDecoration(
                                     labelText: 'Food Name',
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: Color(
+                                          0xff238855,
+                                        ), // Set the focused border color
+                                        width: 2,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -274,10 +325,22 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                 child: TextField(
                                   controller: _quantityController,
                                   keyboardType: TextInputType.number,
+                                  cursorColor: Color(
+                                    0xff238855,
+                                  ), // Set the cursor color
                                   decoration: InputDecoration(
                                     labelText: 'Quantity',
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: Color(
+                                          0xff238855,
+                                        ), // Set the focused border color
+                                        width: 2,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -291,27 +354,65 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                 ),
                                 child: TextField(
                                   controller: _expiryController,
-                                  readOnly: true,
+                                  readOnly: true, // Prevent manual input
+                                  decoration: customInputDecoration(
+                                    "Expiry Date",
+                                    "MM/DD/YYYY",
+                                  ),
                                   onTap: () async {
                                     DateTime? pickedDate = await showDatePicker(
                                       context: context,
-                                      initialDate: DateTime.now(),
-                                      firstDate: DateTime.now(),
-                                      lastDate: DateTime(2100),
+                                      initialDate:
+                                          DateTime.now(), // Set the initial date to today
+                                      firstDate:
+                                          DateTime.now(), // Prevent selecting past dates
+                                      lastDate: DateTime(
+                                        2100,
+                                      ), // Set an upper limit for the date
+                                      builder: (
+                                        BuildContext context,
+                                        Widget? child,
+                                      ) {
+                                        return Theme(
+                                          data: ThemeData.light().copyWith(
+                                            primaryColor: Color(
+                                              0xff238855,
+                                            ), // Header background color
+                                            textButtonTheme:
+                                                TextButtonThemeData(
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor: Color(
+                                                      0xff238855,
+                                                    ), // Button text color
+                                                  ),
+                                                ),
+                                            dialogBackgroundColor:
+                                                Colors
+                                                    .white, // Background color of the dialog
+                                            colorScheme: ColorScheme.light(
+                                              primary: Color(
+                                                0xff238855,
+                                              ), // Header text and selected date color
+                                              onPrimary:
+                                                  Colors
+                                                      .white, // Text color on header
+                                              onSurface:
+                                                  Colors
+                                                      .black, // Text color on calendar
+                                            ),
+                                          ),
+                                          child: child!,
+                                        );
+                                      },
                                     );
+
                                     if (pickedDate != null) {
-                                      setModalState(() {
+                                      setState(() {
                                         _expiryController.text =
-                                            '${pickedDate.day}/${pickedDate.month}/${pickedDate.year}';
+                                            "${pickedDate.month.toString().padLeft(2, '0')}/${pickedDate.day.toString().padLeft(2, '0')}/${pickedDate.year}";
                                       });
                                     }
                                   },
-                                  decoration: InputDecoration(
-                                    labelText: 'Expiry Date',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
                                 ),
                               ),
                               SizedBox(height: 16),
@@ -325,12 +426,16 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                   onTap: () async {
                                     showModalBottomSheet(
                                       context: context,
+                                      backgroundColor: Colors.white,
                                       builder: (BuildContext context) {
                                         return SafeArea(
                                           child: Wrap(
                                             children: [
                                               ListTile(
-                                                leading: Icon(Icons.camera_alt),
+                                                leading: Icon(
+                                                  Icons.camera_alt,
+                                                  color: Color(0xfffd8536),
+                                                ),
                                                 title: Text(
                                                   'Capture from Camera',
                                                 ),
@@ -354,6 +459,7 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                               ListTile(
                                                 leading: Icon(
                                                   Icons.photo_library,
+                                                  color: Color(0xfffd8536),
                                                 ),
                                                 title: Text(
                                                   'Select from Gallery',
@@ -400,7 +506,7 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                                 children: [
                                                   Icon(
                                                     Icons.add_a_photo,
-                                                    color: Color(0xffffc533),
+                                                    color: Color(0xfffd8536),
                                                     size: 50,
                                                   ),
                                                   SizedBox(height: 10),
@@ -454,9 +560,261 @@ class _TradeHomePageState extends State<TradeHomePage> {
     _foodNameController.text = oldFoodName;
     _quantityController.text = oldQuantity;
     _expiryController.text = oldExpiry;
-    _selectedImage = oldImageUrl != null ? File(oldImageUrl) : null;
 
-    _showFullScreenOverlay();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: GestureDetector(
+                  onTap: () {},
+                  child: DraggableScrollableSheet(
+                    initialChildSize: 0.9,
+                    maxChildSize: 0.95,
+                    minChildSize: 0.5,
+                    builder: (context, scrollController) {
+                      return Container(
+                        padding: EdgeInsets.only(
+                          top: MediaQuery.of(context).padding.top,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20),
+                          ),
+                        ),
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Top Bar with Back Button, Title, and Save Button
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.arrow_back_ios,
+                                        color: Colors.black,
+                                      ),
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    Text(
+                                      'Edit Trade Post',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xff238855),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () async {
+                                        final updatedDescription =
+                                            _tradeController.text.trim();
+                                        final updatedFoodName =
+                                            _foodNameController.text.trim();
+                                        final updatedQuantity =
+                                            _quantityController.text.trim();
+                                        final updatedExpiry =
+                                            _expiryController.text.trim();
+
+                                        if (updatedDescription.isEmpty ||
+                                            updatedFoodName.isEmpty ||
+                                            updatedQuantity.isEmpty ||
+                                            updatedExpiry.isEmpty) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Please fill in all fields',
+                                              ),
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        // Update Firestore document
+                                        await FirebaseFirestore.instance
+                                            .collection('trades')
+                                            .doc(docId)
+                                            .update({
+                                              'description': updatedDescription,
+                                              'foodName': updatedFoodName,
+                                              'quantity': updatedQuantity,
+                                              'expiry': updatedExpiry,
+                                            });
+
+                                        Navigator.pop(context);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Color(0xfffd8536),
+                                      ),
+                                      child: Text(
+                                        'Save',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Divider(thickness: 1, color: Colors.grey[300]),
+
+                              // Trade Description
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: TextField(
+                                  controller: _tradeController,
+                                  maxLines: 5,
+                                  cursorColor: Color(0xff238855),
+                                  decoration: customInputDecoration(
+                                    "Trade Description",
+                                    "Edit your trade description...",
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Food Name
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: TextField(
+                                  controller: _foodNameController,
+                                  cursorColor: Color(0xff238855),
+                                  decoration: customInputDecoration(
+                                    "Food Name",
+                                    "Edit the food name",
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Quantity
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: TextField(
+                                  controller: _quantityController,
+                                  keyboardType: TextInputType.number,
+                                  cursorColor: Color(0xff238855),
+                                  decoration: customInputDecoration(
+                                    "Quantity",
+                                    "Edit the quantity",
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Expiry Date
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: TextField(
+                                  controller: _expiryController,
+                                  readOnly: true,
+                                  decoration: customInputDecoration(
+                                    "Expiry Date",
+                                    "MM/DD/YYYY",
+                                  ),
+                                  onTap: () async {
+                                    DateTime? pickedDate = await showDatePicker(
+                                      context: context,
+                                      initialDate: DateTime.now(),
+                                      firstDate: DateTime.now(),
+                                      lastDate: DateTime(2100),
+                                      builder: (
+                                        BuildContext context,
+                                        Widget? child,
+                                      ) {
+                                        return Theme(
+                                          data: ThemeData.light().copyWith(
+                                            primaryColor: Color(0xff238855),
+                                            textButtonTheme:
+                                                TextButtonThemeData(
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor: Color(
+                                                      0xff238855,
+                                                    ),
+                                                  ),
+                                                ),
+                                            dialogBackgroundColor: Colors.white,
+                                            colorScheme: ColorScheme.light(
+                                              primary: Color(0xff238855),
+                                              onPrimary: Colors.white,
+                                              onSurface: Colors.black,
+                                            ),
+                                          ),
+                                          child: child!,
+                                        );
+                                      },
+                                    );
+
+                                    if (pickedDate != null) {
+                                      setModalState(() {
+                                        _expiryController.text =
+                                            "${pickedDate.month.toString().padLeft(2, '0')}/${pickedDate.day.toString().padLeft(2, '0')}/${pickedDate.year}";
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Image Preview
+                              if (oldImageUrl != null)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Image.network(
+                                      oldImageUrl,
+                                      height: 200,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) => Icon(
+                                            Icons.broken_image,
+                                            size: 150,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -465,7 +823,7 @@ class _TradeHomePageState extends State<TradeHomePage> {
       appBar: AppBar(
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () {
             Navigator.pushAndRemoveUntil(
               context,
@@ -474,8 +832,15 @@ class _TradeHomePageState extends State<TradeHomePage> {
             );
           },
         ),
-        title: Text('Trade', style: TextStyle(color: Colors.black)),
-        backgroundColor: Color(0xffffc533),
+        title: Text(
+          'Trade',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
+        backgroundColor: Color(0xff238855),
       ),
       body: Stack(
         children: [
@@ -511,7 +876,7 @@ class _TradeHomePageState extends State<TradeHomePage> {
                 _profileImageUrl != null
                     ? NetworkImage(_profileImageUrl!)
                     : null,
-            backgroundColor: Color(0xffffc533),
+            backgroundColor: Color(0xff238855),
             child:
                 _profileImageUrl == null
                     ? Icon(Icons.person, color: Colors.white)
@@ -535,7 +900,7 @@ class _TradeHomePageState extends State<TradeHomePage> {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.image, color: Color(0xffffc533)),
+            icon: Icon(Icons.image, color: Color(0xfffd8536)),
             onPressed: _pickImage,
           ),
         ],
@@ -622,54 +987,81 @@ class _TradeHomePageState extends State<TradeHomePage> {
             // Header with avatar, name, timestamp, and actions
             Row(
               children: [
-                FutureBuilder<DocumentSnapshot>(
-                  future:
-                      FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(postUid)
-                          .get(),
-                  builder: (context, snapshot) {
-                    String? profileImageUrl;
-
-                    if (snapshot.hasData && snapshot.data != null) {
-                      final userData =
-                          snapshot.data!.data() as Map<String, dynamic>?;
-                      profileImageUrl = userData?['profileImage'];
-                    }
-
-                    return CircleAvatar(
-                      radius: 24,
-                      backgroundImage:
-                          profileImageUrl != null
-                              ? NetworkImage(profileImageUrl)
-                              : null,
-                      backgroundColor: Color(0xffffc533),
-                      child:
-                          profileImageUrl == null
-                              ? Icon(Icons.person, color: Colors.white)
-                              : null,
+                GestureDetector(
+                  onTap: () {
+                    // Navigate to the ProfileScreen of the specific user
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => ProfileScreen(otherUserId: postUid),
+                      ),
                     );
                   },
+                  child: FutureBuilder<DocumentSnapshot>(
+                    future:
+                        FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(postUid)
+                            .get(),
+                    builder: (context, snapshot) {
+                      String? profileImageUrl;
+
+                      if (snapshot.hasData && snapshot.data != null) {
+                        final userData =
+                            snapshot.data!.data() as Map<String, dynamic>?;
+                        profileImageUrl = userData?['profileImage'];
+                      }
+
+                      return CircleAvatar(
+                        radius: 24,
+                        backgroundImage:
+                            profileImageUrl != null
+                                ? NetworkImage(profileImageUrl)
+                                : null,
+                        backgroundColor: Color(0xff238855),
+                        child:
+                            profileImageUrl == null
+                                ? Icon(Icons.person, color: Colors.white)
+                                : null,
+                      );
+                    },
+                  ),
                 ),
                 SizedBox(width: 8),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        username,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                  child: GestureDetector(
+                    onTap: () {
+                      // Navigate to the ProfileScreen of the specific user
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => ProfileScreen(otherUserId: postUid),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        timeAgo(timestamp),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
+                      );
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          username,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          timeAgo(timestamp),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 if (isOwner)
@@ -678,6 +1070,7 @@ class _TradeHomePageState extends State<TradeHomePage> {
                     onPressed: () {
                       showModalBottomSheet(
                         context: context,
+                        backgroundColor: Colors.white,
                         builder: (context) {
                           return SafeArea(
                             child: Wrap(
@@ -685,7 +1078,7 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                 ListTile(
                                   leading: Icon(
                                     Icons.edit,
-                                    color: Color(0xffffc533),
+                                    color: Color(0xff238855),
                                   ),
                                   title: Text('Edit Trade'),
                                   onTap: () {
@@ -703,7 +1096,7 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                 ListTile(
                                   leading: Icon(
                                     Icons.delete,
-                                    color: Colors.black,
+                                    color: Color(0xfffd8536),
                                   ),
                                   title: Text('Delete Trade'),
                                   onTap: () async {
@@ -712,9 +1105,33 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                       context: context,
                                       builder:
                                           (context) => AlertDialog(
-                                            title: Text('Delete Trade'),
+                                            backgroundColor:
+                                                Colors
+                                                    .white, // Set the background color to white
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    16,
+                                                  ), // Add rounded corners
+                                            ),
+                                            title: Text(
+                                              'Delete Trade',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                                color:
+                                                    Colors
+                                                        .black, // Set title text color to black
+                                              ),
+                                            ),
                                             content: Text(
                                               'Are you sure you want to delete this trade?',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                color:
+                                                    Colors
+                                                        .black87, // Set content text color to a darker shade
+                                              ),
                                             ),
                                             actions: [
                                               TextButton(
@@ -726,7 +1143,9 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                                 child: Text(
                                                   'Cancel',
                                                   style: TextStyle(
-                                                    color: Colors.grey,
+                                                    color:
+                                                        Colors
+                                                            .grey, // Set "Cancel" button text color to grey
                                                   ),
                                                 ),
                                               ),
@@ -739,7 +1158,9 @@ class _TradeHomePageState extends State<TradeHomePage> {
                                                 child: Text(
                                                   'Delete',
                                                   style: TextStyle(
-                                                    color: Color(0xffffc533),
+                                                    color: Color(
+                                                      0xfffd8536,
+                                                    ), // Set "Delete" button text color to orange
                                                   ),
                                                 ),
                                               ),
@@ -855,14 +1276,13 @@ class _TradeHomePageState extends State<TradeHomePage> {
 
                       return IconButton(
                         icon: Image.asset(
-                          'assets/Trade.png', // Path to your trade icon
+                          'assets/tradebutton.png', // Path to your trade icon
                           height: 35,
                           width: 35,
                           color:
                               isTradeSubmitted
-                                  ? Color(
-                                    0xffffc533,
-                                  ) // Change to green if submitted
+                                  ? Color(0xfffd8536)
+                                  // Change to green if submitted
                                   : null, // Default color
                         ),
                         onPressed: () async {

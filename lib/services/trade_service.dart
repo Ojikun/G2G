@@ -8,6 +8,27 @@ import 'fcm_service.dart';
 
 class TradeService {
   final CloudinaryService _cloudinaryService = CloudinaryService();
+  InputDecoration customInputDecoration(String label, String hint) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      floatingLabelStyle: TextStyle(
+        color: Color(0xff238855), // Focused label text color
+      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Color(0xff238855)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+    );
+  }
 
   Future<void> submitTradeRequest({
     required String tradePostId,
@@ -115,6 +136,58 @@ class TradeService {
     }
   }
 
+  Future<void> showImagePickerOptions(
+    BuildContext context,
+    Function(File) onImageSelected,
+  ) async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.photo_library,
+                  color: Color(0xfffd8536),
+                ),
+                title: const Text('Choose from Gallery'),
+                onTap: () async {
+                  Navigator.pop(context); // Close the bottom sheet
+                  final picker = ImagePicker();
+                  final pickedFile = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (pickedFile != null) {
+                    onImageSelected(File(pickedFile.path));
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Color(0xfffd8536)),
+                title: const Text('Capture from Camera'),
+                onTap: () async {
+                  Navigator.pop(context); // Close the bottom sheet
+                  final picker = ImagePicker();
+                  final pickedFile = await picker.pickImage(
+                    source: ImageSource.camera,
+                  );
+                  if (pickedFile != null) {
+                    onImageSelected(File(pickedFile.path));
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> showTradeRequestOverlay({
     required BuildContext context,
     required String tradePostId,
@@ -183,6 +256,7 @@ class TradeService {
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
+                                        color: Color(0xff238855),
                                       ),
                                     ),
                                     ElevatedButton(
@@ -256,7 +330,13 @@ class TradeService {
                                           );
                                         }
                                       },
-                                      child: Text('Submit'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Color(0xfffd8536),
+                                      ),
+                                      child: Text(
+                                        'Submit',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -271,11 +351,10 @@ class TradeService {
                                 child: TextField(
                                   controller: _tradeDescriptionController,
                                   maxLines: 5,
-                                  decoration: InputDecoration(
-                                    hintText: 'Write your trade description...',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                                  cursorColor: Color(0xff238855),
+                                  decoration: customInputDecoration(
+                                    "Trade Description",
+                                    "Write your trade description...",
                                   ),
                                 ),
                               ),
@@ -288,11 +367,10 @@ class TradeService {
                                 ),
                                 child: TextField(
                                   controller: _foodNameController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Food Name',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                                  cursorColor: Color(0xff238855),
+                                  decoration: customInputDecoration(
+                                    "Food Name",
+                                    "Enter the food name",
                                   ),
                                 ),
                               ),
@@ -306,11 +384,10 @@ class TradeService {
                                 child: TextField(
                                   controller: _quantityController,
                                   keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    labelText: 'Quantity',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                                  cursorColor: Color(0xff238855),
+                                  decoration: customInputDecoration(
+                                    "Quantity",
+                                    "Enter the quantity",
                                   ),
                                 ),
                               ),
@@ -324,26 +401,50 @@ class TradeService {
                                 child: TextField(
                                   controller: _expiryController,
                                   readOnly: true,
+                                  decoration: customInputDecoration(
+                                    "Expiry Date",
+                                    "MM/DD/YYYY",
+                                  ),
                                   onTap: () async {
                                     DateTime? pickedDate = await showDatePicker(
                                       context: context,
                                       initialDate: DateTime.now(),
                                       firstDate: DateTime.now(),
                                       lastDate: DateTime(2100),
+                                      builder: (
+                                        BuildContext context,
+                                        Widget? child,
+                                      ) {
+                                        return Theme(
+                                          data: ThemeData.light().copyWith(
+                                            primaryColor: Color(0xff238855),
+                                            textButtonTheme:
+                                                TextButtonThemeData(
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor: Color(
+                                                      0xff238855,
+                                                    ),
+                                                  ),
+                                                ),
+                                            dialogBackgroundColor: Colors.white,
+                                            colorScheme: ColorScheme.light(
+                                              primary: Color(0xff238855),
+                                              onPrimary: Colors.white,
+                                              onSurface: Colors.black,
+                                            ),
+                                          ),
+                                          child: child!,
+                                        );
+                                      },
                                     );
+
                                     if (pickedDate != null) {
                                       setModalState(() {
                                         _expiryController.text =
-                                            '${pickedDate.day}/${pickedDate.month}/${pickedDate.year}';
+                                            "${pickedDate.month.toString().padLeft(2, '0')}/${pickedDate.day.toString().padLeft(2, '0')}/${pickedDate.year}";
                                       });
                                     }
                                   },
-                                  decoration: InputDecoration(
-                                    labelText: 'Expiry Date',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
                                 ),
                               ),
                               SizedBox(height: 16),
@@ -355,15 +456,13 @@ class TradeService {
                                 ),
                                 child: GestureDetector(
                                   onTap: () async {
-                                    final picker = ImagePicker();
-                                    final picked = await picker.pickImage(
-                                      source: ImageSource.gallery,
-                                    );
-                                    if (picked != null) {
+                                    showImagePickerOptions(context, (
+                                      File selectedImage,
+                                    ) {
                                       setModalState(() {
-                                        _selectedImage = File(picked.path);
+                                        _selectedImage = selectedImage;
                                       });
-                                    }
+                                    });
                                   },
                                   child: Container(
                                     height: 200,
@@ -381,10 +480,10 @@ class TradeService {
                                               child: Column(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
-                                                children: [
+                                                children: const [
                                                   Icon(
                                                     Icons.add_a_photo,
-                                                    color: Color(0xffffc533),
+                                                    color: Color(0xfffd8536),
                                                     size: 50,
                                                   ),
                                                   SizedBox(height: 10),
