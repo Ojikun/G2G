@@ -3,8 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'quota_utils.dart'; // Contains getRemainingWeeklyQuantity() and kWeeklyLimit
-import '../Homepage.dart';
-import '../main.dart'; // Contains navigatorKey
 
 class GetFoodItem {
   final String foodId;
@@ -34,6 +32,7 @@ void showGetBasketFlow({
 
   if (totalRequested > remainingThisWeek) {
     if (context.mounted) {
+      // Check if the context is still valid
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -45,8 +44,9 @@ void showGetBasketFlow({
     return;
   }
 
-  // Confirmation bottom sheet
+  // Confirmation dialog
   bool confirmed = false;
+  // Replace the confirmation dialog section with this:
   if (context.mounted) {
     confirmed =
         await showModalBottomSheet<bool>(
@@ -54,170 +54,235 @@ void showGetBasketFlow({
           isScrollControlled: true,
           backgroundColor: Colors.white,
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          builder: (ctx) {
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[400],
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
+          builder:
+              (ctx) => SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    MediaQuery.of(ctx).viewInsets.bottom + 16,
                   ),
-                  const SizedBox(height: 20),
-                  Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.asset(
-                          'assets/get.png',
-                          width: 30,
-                          height: 30,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        "Confirm Food Items",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: Color(0xff238855),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        return Card(
-                          shape: RoundedRectangleBorder(
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          elevation: 3,
-                          margin: const EdgeInsets.symmetric(vertical: 5),
-                          child: ListTile(
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child:
-                                  item.imageUrl.isNotEmpty
-                                      ? Image.network(
-                                        item.imageUrl,
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : const Icon(
-                                        Icons.fastfood,
-                                        size: 40,
-                                        color: Color(0xff238855),
-                                      ),
-                            ),
-                            title: Text(
-                              item.foodName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Quantity: ${item.quantity}",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Icon(
-                                      Icons.location_on,
-                                      size: 16,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        item.location,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey[700],
-                                        ),
-                                        maxLines: null,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          label: const Text(
-                            "Cancel",
-                            style: TextStyle(color: Colors.black, fontSize: 16),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            side: const BorderSide(color: Color(0xff238855)),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          onPressed: () => Navigator.of(ctx).pop(false),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          label: const Text(
-                            "Claim",
-                            style: TextStyle(color: Colors.white, fontSize: 16),
+                      const SizedBox(height: 20),
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.asset(
+                                  'assets/get.png',
+                                  width: 30,
+                                  height: 30,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              const Text(
+                                "Confirm Food Items",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xff238855),
+                                ),
+                              ),
+                            ],
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xfffd8536),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Items List
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(ctx).size.height * 0.4,
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children:
+                                items
+                                    .map(
+                                      (item) => Card(
+                                        color: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        elevation: 3,
+                                        margin: const EdgeInsets.symmetric(
+                                          vertical: 5,
+                                        ),
+                                        child: ListTile(
+                                          leading: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            child:
+                                                item.imageUrl.isNotEmpty
+                                                    ? Image.network(
+                                                      item.imageUrl,
+                                                      width: 50,
+                                                      height: 50,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (
+                                                        context,
+                                                        error,
+                                                        stackTrace,
+                                                      ) {
+                                                        return Container(
+                                                          width: 50,
+                                                          height: 50,
+                                                          color: const Color(
+                                                            0xfffd8536,
+                                                          ),
+                                                          child: const Icon(
+                                                            Icons.fastfood,
+                                                            size: 30,
+                                                            color: Colors.white,
+                                                          ),
+                                                        );
+                                                      },
+                                                    )
+                                                    : Container(
+                                                      width: 50,
+                                                      height: 50,
+                                                      color: const Color(
+                                                        0xfffd8536,
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.fastfood,
+                                                        size: 30,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                          ),
+                                          title: Text(
+                                            item.foodName,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          subtitle: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Quantity: ${item.quantity}",
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Icon(
+                                                    Icons.location_on,
+                                                    size: 16,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Expanded(
+                                                    child: Text(
+                                                      item.location,
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        color: Colors.grey[700],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          isThreeLine: true,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(color: Color(0xff238855)),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: Text(
+                                "Cancel",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
+                              ),
                             ),
                           ),
-                          onPressed: () => Navigator.of(ctx).pop(true),
-                        ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xfffd8536),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: Text(
+                                "Claim",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            );
-          },
         ) ??
         false;
   }
 
-  if (!confirmed) return;
+  if (confirmed != true) return;
 
   // Claim items
   final claimedItems = <GetFoodItem>[];
@@ -230,6 +295,7 @@ void showGetBasketFlow({
 
     if (item.quantity > currentQuantity) {
       if (context.mounted) {
+        // Ensure context is still valid
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Not enough stock for ${item.foodName}.")),
         );
@@ -269,20 +335,8 @@ void showGetBasketFlow({
     locationGroups.putIfAbsent(item.location, () => []).add(item);
   }
 
-  final currentContext = navigatorKey.currentContext;
-  if (currentContext != null) {
-    for (final group in locationGroups.entries) {
-      _showGroupedTimerOverlay(currentContext, group.key, group.value);
-    }
-  }
-
-  // Navigate to Homepage after showing overlays
-  if (context.mounted) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => HomeScreen()),
-      (route) => false,
-    );
+  for (final group in locationGroups.entries) {
+    _showGroupedTimerOverlay(context, group.key, group.value);
   }
 }
 
@@ -293,9 +347,17 @@ void _showGroupedTimerOverlay(
   String location,
   List<GetFoodItem> items,
 ) {
-  final bottomOffset =
-      105.0 + (activeOverlayCount * 100); // Stack overlays 90px apart.
-  activeOverlayCount++; // Increment overlay count.
+  final screenHeight = MediaQuery.of(context).size.height;
+  final bottomSafeArea = MediaQuery.of(context).padding.bottom;
+  final maxOverlaySpace = screenHeight * 1;
+
+  final spacing =
+      activeOverlayCount > 1
+          ? (maxOverlaySpace / activeOverlayCount).clamp(120, 160.0)
+          : 120.0; // Adjust spacing based on active overlays
+
+  final bottomOffset = 100 + bottomSafeArea + (activeOverlayCount * spacing);
+  activeOverlayCount++;
 
   final Duration oneHour = Duration(hours: 1);
   final DateTime endTime = DateTime.now().add(oneHour);
@@ -375,15 +437,15 @@ void _showGroupedTimerOverlay(
                 },
                 child: AnimatedContainer(
                   duration: Duration(milliseconds: 300),
-                  padding: EdgeInsets.all(12),
+                  padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
-                        // blurRadius: 12,
-                        // offset: Offset(0, 5),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -391,35 +453,35 @@ void _showGroupedTimerOverlay(
                       isExpanded
                           ? Row(
                             children: [
-                              // Left side: Food info
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       "🎉 You got ${items.map((item) => item.quantity).join(", ")} ${items.map((item) => item.foodName).join(", ")}!",
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                    const SizedBox(height: 4),
                                     Text(
                                       "📍 Get at $location",
-                                      style: TextStyle(fontSize: 14),
-                                      maxLines:
-                                          null, // Allow the text to wrap to multiple lines
+                                      style: const TextStyle(fontSize: 14),
+                                      maxLines: 2,
                                     ),
                                   ],
                                 ),
                               ),
-                              SizedBox(width: 12),
-                              // Right side: Timer and Done button
+                              const SizedBox(width: 12),
                               Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
                                     "⏳ $minutes:$seconds",
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xff238855),
@@ -430,11 +492,11 @@ void _showGroupedTimerOverlay(
                                       await updateQuantitiesInFirestore();
                                       removeOverlay();
                                     },
-                                    icon: Icon(
+                                    icon: const Icon(
                                       Icons.check_circle_outline,
                                       color: Color(0xff238855),
                                     ),
-                                    label: Text(
+                                    label: const Text(
                                       "Done",
                                       style: TextStyle(
                                         color: Color(0xff238855),
@@ -448,15 +510,20 @@ void _showGroupedTimerOverlay(
                           : Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                "📍 $location",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Text(
+                                  "📍 Get at $location",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 2,
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
-                              Icon(Icons.expand_more, color: Color(0xff238855)),
+                              const Icon(
+                                Icons.expand_more,
+                                color: Color(0xff238855),
+                              ),
                             ],
                           ),
                 ),
