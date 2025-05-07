@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'quota_utils.dart'; // Contains getRemainingWeeklyQuantity() and kWeeklyLimit
+import '../services/badge_service.dart'; // Contains BadgeService class
 
 class GetFoodItem {
   final String foodId;
@@ -395,6 +396,49 @@ void _showGroupedTimerOverlay(
     }
   }
 
+  Future<void> handleDonePressed() async {
+    try {
+      await updateQuantitiesInFirestore();
+
+      // Check and award badges
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUserId != null && context.mounted) {
+        // Get user's current badge counts
+        final userDoc = FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId);
+        final getsCount = await userDoc.collection('gets').count().get();
+
+        // Check for badge achievements
+        if ([1, 3, 5, 8, 10].contains(getsCount.count)) {
+          final badgeDoc =
+              await FirebaseFirestore.instance
+                  .collection('badges')
+                  .where('type', isEqualTo: 'get')
+                  .where('count', isEqualTo: getsCount.count)
+                  .get();
+
+          if (badgeDoc.docs.isNotEmpty) {
+            final badgeData = badgeDoc.docs.first.data();
+
+            // Show badge overlay
+            if (context.mounted) {
+              await BadgeService.showBadgeOverlay(
+                context,
+                badgeData['badgeName'] ?? 'New Badge',
+                badgeData['badgeUrl'] ?? '',
+              );
+            }
+          }
+        }
+      }
+
+      removeOverlay();
+    } catch (e) {
+      print('Error handling done: $e');
+    }
+  }
+
   entry = OverlayEntry(
     builder: (context) {
       return Positioned(
@@ -491,6 +535,7 @@ void _showGroupedTimerOverlay(
                                     onPressed: () async {
                                       await updateQuantitiesInFirestore();
                                       removeOverlay();
+                                      handleDonePressed();
                                     },
                                     icon: const Icon(
                                       Icons.check_circle_outline,

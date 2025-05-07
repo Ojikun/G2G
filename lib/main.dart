@@ -5,7 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'Splash.dart';
+// import 'Splash.dart';
 import 'Homepage.dart';
 import 'Give.dart';
 import 'Get.dart';
@@ -37,8 +37,8 @@ class G2GApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {
-        '/': (context) => SplashScreen(),
-        '/home': (context) => HomeScreen(),
+        // '/': (context) => SplashScreen(),
+        '/': (context) => HomeScreen(),
         '/give': (context) => GiveFoodPage(),
         '/get': (context) => GetScreenPage(),
         '/trade': (context) => TradeHomePage(),
