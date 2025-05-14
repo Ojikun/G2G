@@ -9,6 +9,7 @@ class FCMServiceV1 {
     required String targetToken,
     required String title,
     required String body,
+    Map<String, dynamic>? payload,
   }) async {
     final accountCredentials = ServiceAccountCredentials.fromJson({
       "type": "service_account",

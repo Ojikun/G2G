@@ -1,6 +1,10 @@
+import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../TradeRequestDetail.dart';
 
 class NotificationService {
   static final FirebaseMessaging _firebaseMessaging =
@@ -19,78 +23,131 @@ class NotificationService {
     await _localNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        // Handle notification tap if needed
         if (response.payload != null) {
-          print('Notification payload: ${response.payload}');
-          // You can navigate to a specific screen if needed
-          // Example: Navigator.push(context, MaterialPageRoute(builder: (_) => TargetScreen()));
+          final payload = json.decode(response.payload!);
+          handleNotificationTap(context, payload);
         }
       },
     );
 
-    // Request notification permissions (for iOS, optional but recommended)
+    // Request notification permissions
     NotificationSettings settings = await _firebaseMessaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted notification permission');
-    } else {
-      print('User declined or has not accepted notification permission');
-    }
+    print('Notification authorization status: ${settings.authorizationStatus}');
 
-    // Get FCM token
-    String? token = await _firebaseMessaging.getToken();
-    print("✅ FCM Registration Token: $token");
-
-    // TODO: Save the token to Firestore linked to the current user
-    // Example:
-    // await FirebaseFirestore.instance.collection('users').doc(uid).update({'fcmToken': token});
-
-    // Listen to foreground messages
+    // Handle foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('📩 Received a foreground message: ${message.messageId}');
+      print('📩 Received foreground message: ${message.messageId}');
       if (message.notification != null) {
         _showLocalNotification(
           title: message.notification!.title ?? 'New Notification',
           body: message.notification!.body ?? '',
+          payload: message.data,
         );
       }
     });
 
-    // Handle notification when app is opened by tapping on it
+    // Handle notification tap when app is in background
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('🖐️ Notification clicked and app opened!');
-      // Navigate to a specific screen if needed
+      print('🔥 App opened from background notification');
+      handleNotificationTap(context, message.data);
     });
+
+    // Get and save FCM token
+    String? token = await _firebaseMessaging.getToken();
+    if (token != null) {
+      print('✅ FCM Token: ${token.substring(0, 10)}...');
+      await _saveFCMToken(token);
+    }
+  }
+
+  static Future<void> _saveFCMToken(String token) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({'fcmToken': token});
+        print('✅ FCM token saved to Firestore');
+      }
+    } catch (e) {
+      print('❌ Error saving FCM token: $e');
+    }
   }
 
   static Future<void> _showLocalNotification({
     required String title,
     required String body,
+    Map<String, dynamic>? payload,
   }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'default_channel_id', // channel id
-          'Default Notifications', // channel name
-          channelDescription:
-              'This channel is used for important notifications.',
-          importance: Importance.high,
-          priority: Priority.high,
-        );
+    try {
+      final AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+            'default_channel_id',
+            'Default Notifications',
+            channelDescription:
+                'This channel is used for important notifications.',
+            importance: Importance.high,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+          );
 
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-    );
+      final NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+      );
 
-    await _localNotificationsPlugin.show(
-      0, // Notification ID
-      title,
-      body,
-      notificationDetails,
-      payload: 'Default payload', // Optional, pass extra data
-    );
+      await _localNotificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        notificationDetails,
+        payload: payload != null ? json.encode(payload) : null,
+      );
+    } catch (e) {
+      print('❌ Error showing local notification: $e');
+    }
+  }
+
+  static void handleNotificationTap(
+    BuildContext context,
+    Map<String, dynamic> payload,
+  ) {
+    try {
+      final String type = payload['type'] ?? '';
+
+      switch (type) {
+        case 'trade_request':
+          final String? postId = payload['tradePostId'];
+          final String? requestId = payload['requestId'];
+          if (postId != null && requestId != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => TradeRequestDetailPage(
+                      postId: postId,
+                      requestId: requestId,
+                    ),
+              ),
+            );
+          }
+          break;
+
+        case 'chat_message':
+          // Handle chat message navigation
+          break;
+
+        default:
+          print('⚠️ Unknown notification type: $type');
+      }
+    } catch (e) {
+      print('❌ Error handling notification tap: $e');
+    }
   }
 }

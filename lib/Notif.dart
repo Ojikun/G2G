@@ -71,7 +71,17 @@ class _NotifPageState extends State<NotifPage> {
             }
 
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Center(child: Text('No notifications yet.'));
+              return const Center(
+                child: Text(
+                  'No notifications yet.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                    height: 1.5,
+                  ),
+                ),
+              );
             }
 
             final notifications = snapshot.data!.docs;
@@ -169,69 +179,126 @@ class _NotifPageState extends State<NotifPage> {
                         ),
                       ],
                     ),
+                    // Update the onTap handler in the ListTile:
+                    // Inside the ListTile onTap handler:
                     onTap: () async {
-                      // Mark as read
-                      await FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(currentUser?.uid)
-                          .collection('notifications')
-                          .doc(notifications[index].id)
-                          .update({'isRead': true});
+                      try {
+                        // Mark as read first
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(currentUser?.uid)
+                            .collection('notifications')
+                            .doc(notifications[index].id)
+                            .update({'isRead': true});
 
-                      if (!mounted) return;
+                        if (!mounted) return;
 
-                      // Navigate based on notification type
-                      if (isTradeAccepted) {
+                        // Get notification data
+                        final notificationType = notification['type'] ?? '';
                         final tradePostId = notification['tradePostId'];
                         final requestId = notification['requestId'];
-                        if (tradePostId != null && requestId != null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => AcceptedTradePage(
-                                    tradePostId: tradePostId,
-                                    requestId: requestId,
+                        final chatId = notification['chatId'];
+                        final senderId = notification['senderId'];
+                        final senderName = notification['senderName'];
+
+                        // Navigate based on notification type
+                        switch (notificationType) {
+                          case 'trade_request':
+                            if (tradePostId != null && requestId != null) {
+                              print(
+                                'DEBUG: Navigating to trade request detail page',
+                              );
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => TradeRequestDetailPage(
+                                        postId: tradePostId,
+                                        requestId: requestId,
+                                      ),
+                                ),
+                              );
+                            } else {
+                              print('DEBUG: Missing trade request details');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Error: Missing trade request details',
                                   ),
-                            ),
-                          );
-                        }
-                      } else if (isTradeRequest) {
-                        final tradePostId = notification['tradePostId'];
-                        final requestId = notification['requestId'];
-                        if (tradePostId != null && requestId != null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => TradeRequestDetailPage(
-                                    postId: tradePostId,
-                                    requestId: requestId,
-                                  ),
-                            ),
-                          );
-                        }
-                      } else if (notification['chatId'] != null) {
-                        final chatId = notification['chatId'].toString();
-                        final otherUserId = chatId
-                            .split('_')
-                            .firstWhere(
-                              (id) => id != currentUser?.uid,
-                              orElse: () => '',
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                            break;
+
+                          case 'trade_accepted':
+                            if (tradePostId != null && requestId != null) {
+                              print('DEBUG: Navigating to accepted trade page');
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => AcceptedTradePage(
+                                        tradePostId: tradePostId,
+                                        requestId: requestId,
+                                      ),
+                                ),
+                              );
+                            } else {
+                              print('DEBUG: Missing trade accepted details');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: Missing trade details'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                            break;
+
+                          case 'chat_message':
+                            if (chatId != null && senderId != null) {
+                              // Get current user's name
+                              final currentUserDoc =
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(currentUser?.uid)
+                                      .get();
+
+                              final currentUserName =
+                                  currentUserDoc.data()?['name'] ?? 'User';
+
+                              if (!mounted) return;
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => ChatScreen(
+                                        currentUserName: currentUserName,
+                                        personName: senderName ?? 'User',
+                                        currentUserId: currentUser!.uid,
+                                        otherUserId: senderId,
+                                        profileImageUrl:
+                                            notification['senderProfileImage'],
+                                      ),
+                                ),
+                              );
+                            }
+                            break;
+
+                          default:
+                            print(
+                              'DEBUG: Unknown notification type: $notificationType',
                             );
-                        if (otherUserId.isNotEmpty) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => ChatScreen(
-                                    personName:
-                                        notification['senderName'] ?? 'User',
-                                    currentUserId: currentUser!.uid,
-                                    otherUserId: otherUserId,
-                                    profileImageUrl:
-                                        notification['senderProfileImage'],
-                                  ),
+                            break;
+                        }
+                      } catch (e) {
+                        print('DEBUG: Error handling notification tap: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error opening notification: $e'),
+                              backgroundColor: Colors.red,
                             ),
                           );
                         }

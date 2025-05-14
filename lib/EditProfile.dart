@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'services/cloudinary_service.dart'; // <-- adjust this import if needed
+import 'services/cloudinary_service.dart';
+import 'Profile.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -21,6 +22,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? currentImageUrl;
 
   final CloudinaryService _cloudinaryService = CloudinaryService();
+
+  InputDecoration customInputDecoration(String label, String hint) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      floatingLabelStyle: const TextStyle(color: Color(0xff238855)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+      enabledBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.grey),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Color(0xff238855)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+    );
+  }
 
   @override
   void initState() {
@@ -63,7 +84,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Wrap(
             children: [
               ListTile(
-                leading: const Icon(Icons.camera_alt),
+                leading: const Icon(Icons.camera_alt, color: Color(0xfffd8536)),
                 title: const Text('Capture from Camera'),
                 onTap: () async {
                   Navigator.pop(context); // Close the bottom sheet
@@ -72,7 +93,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
 
               ListTile(
-                leading: const Icon(Icons.photo_library),
+                leading: const Icon(
+                  Icons.photo_library,
+                  color: Color(0xfffd8536),
+                ),
                 title: const Text('Choose from Gallery'),
                 onTap: () async {
                   Navigator.pop(context); // Close the bottom sheet
@@ -97,6 +121,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  // Update the saveProfile method
   Future<void> saveProfile() async {
     if (user == null) return;
 
@@ -121,29 +146,81 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             'profileImage': imageUrl,
           });
 
-      Navigator.pop(context, true); // Return success
+      if (mounted) {
+        // Return to Profile screen with refresh flag
+        Navigator.pop(context, true);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully'),
+            backgroundColor: Color(0xff238855),
+          ),
+        );
+
+        // Find and refresh the ProfileScreen
+        final profileContext = Navigator.of(context);
+        if (profileContext.canPop()) {
+          // Pop back to Profile and trigger refresh
+          final wasRefreshed = await profileContext.maybePop(true);
+          if (!wasRefreshed && mounted) {
+            // If direct pop didn't work, replace with fresh Profile
+            await Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfileScreen(otherUserId: user!.uid),
+              ),
+            );
+          }
+        }
+      }
     } catch (e) {
       print('Error saving profile: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Error saving profile')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error updating profile'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Profile'),
-        backgroundColor: Colors.teal,
+      appBar: // Replace the existing AppBar with:
+          AppBar(
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
+        backgroundColor: const Color(0xff238855),
+        elevation: 0,
       ),
       body:
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xff238855)),
+                ),
+              )
               : SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -173,7 +250,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             child: const Icon(
                               Icons.edit,
                               size: 20,
-                              color: Colors.teal,
+                              color: Color(0xff238855),
                             ),
                           ),
                         ),
@@ -182,19 +259,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     const SizedBox(height: 20),
                     TextField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        border: OutlineInputBorder(),
-                      ),
+                      cursorColor: const Color(0xff238855),
+                      decoration: customInputDecoration('Full Name', ''),
                     ),
                     const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        foregroundColor: Colors.white,
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      // Wrap ElevatedButton with SizedBox
+                      width: 150, // Set fixed width
+                      child: ElevatedButton(
+                        onPressed: saveProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xfffd8536),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Save Changes'),
                       ),
-                      child: const Text('Save Changes'),
                     ),
                   ],
                 ),

@@ -221,7 +221,9 @@ class HomePageContent extends StatelessWidget {
               onSeeAllPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => HistoryScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => HistoryScreen(userId: currentUserId),
+                  ),
                 );
               },
               emptySectionMessage: 'Give now and earn a badge!',
@@ -241,7 +243,7 @@ class HomePageContent extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const HistoryScreen(),
+                    builder: (context) => HistoryScreen(userId: currentUserId),
                   ),
                 );
               },
@@ -516,7 +518,7 @@ class Section extends StatelessWidget {
                 child: Text(
                   'See all',
                   style: TextStyle(
-                    color: const Color(0xff238855).withOpacity(0.5),
+                    color: const Color(0xff238855),
                     fontSize: 14,
                   ),
                 ),

@@ -208,6 +208,13 @@ class _ChatListItem extends StatelessWidget {
     String? profileImage,
   ) async {
     try {
+      final currentUserDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUserId)
+              .get();
+
+      final currentUserName = currentUserDoc.data()?['name'] ?? 'User';
       // Mark as read using ChatService
       final chatId = ChatService.getChatId(currentUserId, otherUserId);
       await FirebaseFirestore.instance.collection('chats').doc(chatId).update({
@@ -220,6 +227,7 @@ class _ChatListItem extends StatelessWidget {
           MaterialPageRoute(
             builder:
                 (_) => ChatScreen(
+                  currentUserName: currentUserName,
                   personName: name,
                   currentUserId: currentUserId,
                   otherUserId: otherUserId,

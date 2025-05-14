@@ -25,65 +25,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String fullName = '';
   String email = '';
   String? profileImageUrl;
-  Future<List<Map<String, dynamic>>> _fetchRecentHistory() async {
-    final allItems = <Map<String, dynamic>>[];
 
-    // Fetch gives
-    final givesSnapshot =
-        await FirebaseFirestore.instance
-            .collection('donations')
-            .where('userId', isEqualTo: currentUser!.uid)
-            .orderBy('timestamp', descending: true)
-            .limit(2)
-            .get();
-
-    // Fetch gets
-    final getsSnapshot =
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser!.uid)
-            .collection('gets')
-            .orderBy('timestamp', descending: true)
-            .limit(2)
-            .get();
-
-    // Fetch trades
-    final tradesSnapshot =
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .where('uid', isEqualTo: currentUser!.uid)
-            .orderBy('timestamp', descending: true)
-            .limit(2)
-            .get();
-
-    // Add gives
-    for (var doc in givesSnapshot.docs) {
-      final data = doc.data();
-      allItems.add({...data, 'type': 'Given', 'itemId': doc.id});
-    }
-
-    // Add gets
-    for (var doc in getsSnapshot.docs) {
-      final data = doc.data();
-      allItems.add({...data, 'type': 'Received', 'itemId': data['foodId']});
-    }
-
-    // Add trades
-    for (var doc in tradesSnapshot.docs) {
-      final data = doc.data();
-      allItems.add({...data, 'type': 'Traded', 'itemId': doc.id});
-    }
-
-    // Sort by timestamp
-    allItems.sort((a, b) {
-      final aTime = (a['timestamp'] as Timestamp).toDate();
-      final bTime = (b['timestamp'] as Timestamp).toDate();
-      return bTime.compareTo(aTime);
-    });
-
-    // Return only the 2 most recent items
-    return allItems.take(2).toList();
-  }
+  List<Map<String, dynamic>>? _cachedHistory;
+  DateTime? _lastHistoryFetch;
+  final _userCache = <String, Map<String, dynamic>>{};
 
   @override
   void initState() {
@@ -94,6 +39,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _fetchUserDetails();
   }
 
+  Future<String?> getUserIdFromEmail(String email) async {
+    try {
+      final querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where('email', isEqualTo: email)
+              .limit(1)
+              .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        return querySnapshot.docs.first.id;
+      }
+      return null;
+    } catch (e) {
+      print('Error getting userId from email: $e');
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRecentHistory() async {
+    if (_cachedHistory != null && _lastHistoryFetch != null) {
+      final difference = DateTime.now().difference(_lastHistoryFetch!);
+      if (difference.inMinutes < 5) return _cachedHistory!;
+    }
+
+    final userId = widget.otherUserId ?? currentUser!.uid;
+    final allItems = <Map<String, dynamic>>[];
+
+    try {
+      // Fetch gives (donations)
+      final givesSnapshot =
+          await FirebaseFirestore.instance
+              .collection('donations')
+              .where('userId', isEqualTo: userId)
+              .orderBy('timestamp', descending: true)
+              .limit(2)
+              .get();
+
+      for (var doc in givesSnapshot.docs) {
+        final data = doc.data();
+        allItems.add({
+          ...data,
+          'type': 'Given',
+          'itemId': doc.id,
+          'name': data['name'] ?? 'No Name',
+          'imageUrl': data['imageUrl'] ?? '',
+        });
+      }
+
+      // Fetch gets
+      final getsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('gets')
+              .orderBy('timestamp', descending: true)
+              .limit(2)
+              .get();
+
+      for (var doc in getsSnapshot.docs) {
+        final data = doc.data();
+        final foodId = data['foodId'] ?? '';
+
+        // Get original donation details
+        final donationDoc =
+            await FirebaseFirestore.instance
+                .collection('donations')
+                .doc(foodId)
+                .get();
+
+        if (donationDoc.exists) {
+          final donationData = donationDoc.data()!;
+          allItems.add({
+            ...data,
+            'type': 'Received',
+            'itemId': foodId,
+            'name': data['foodName'] ?? donationData['name'] ?? 'No Name',
+            'imageUrl': donationData['imageUrl'] ?? '',
+            'timestamp': data['timestamp'],
+          });
+        }
+      }
+
+      // Fetch trades
+      final tradesSnapshot =
+          await FirebaseFirestore.instance
+              .collection('trades')
+              .where('uid', isEqualTo: userId)
+              .orderBy('timestamp', descending: true)
+              .limit(2)
+              .get();
+
+      for (var doc in tradesSnapshot.docs) {
+        final data = doc.data();
+        allItems.add({
+          ...data,
+          'type': 'Traded',
+          'itemId': doc.id,
+          'name': data['foodName'] ?? 'No Name',
+          'imageUrl': data['imageUrl'] ?? '',
+        });
+      }
+
+      // Sort by timestamp
+      allItems.sort((a, b) {
+        final aTime = (a['timestamp'] as Timestamp).toDate();
+        final bTime = (b['timestamp'] as Timestamp).toDate();
+        return bTime.compareTo(aTime);
+      });
+
+      // Cache the results
+      _cachedHistory = allItems.take(2).toList();
+      _lastHistoryFetch = DateTime.now();
+
+      return _cachedHistory!;
+    } catch (e) {
+      print('Error fetching history: $e');
+      return [];
+    }
+  }
+
   Future<void> _fetchUserDetails() async {
     if (!mounted) return;
 
@@ -101,6 +167,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (userId == null) return;
 
     try {
+      // Check cache first
+      if (_userCache.containsKey(userId)) {
+        final cached = _userCache[userId]!;
+        setState(() {
+          fullName = cached['name'] ?? 'No Name';
+          email = cached['email'] ?? 'No Email';
+          profileImageUrl = cached['profileImage'];
+        });
+        return;
+      }
+
       final userDoc =
           await FirebaseFirestore.instance
               .collection('users')
@@ -110,11 +187,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
 
       if (userDoc.exists) {
-        final data = userDoc.data();
+        final data = userDoc.data()!;
+        // Cache the user data
+        _userCache[userId] = data;
+
         setState(() {
-          fullName = data?['name'] ?? 'No Name';
-          email = data?['email'] ?? 'No Email';
-          profileImageUrl = data?['profileImage'];
+          fullName = data['name'] ?? 'No Name';
+          email = data['email'] ?? 'No Email';
+          profileImageUrl = data['profileImage'];
         });
       }
     } catch (e) {
@@ -260,21 +340,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildActionButton() {
     return SizedBox(
-      width: 200,
+      width: 150,
       child: ElevatedButton(
         onPressed: () async {
           if (isCurrentUser) {
+            // Navigate to EditProfile and await result
             final updated = await Navigator.push<bool>(
               context,
               MaterialPageRoute(builder: (_) => const EditProfileScreen()),
             );
-            if (updated ?? false) _fetchUserDetails();
+
+            // Refresh profile if changes were made
+            if (updated == true && mounted) {
+              setState(() {
+                _cachedHistory = null;
+                _lastHistoryFetch = null;
+                _userCache.clear();
+              });
+              await _fetchUserDetails();
+            }
           } else {
+            final currentUserDoc =
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .get();
+
+            if (!mounted) return;
+
+            final currentUserName = currentUserDoc.data()?['name'] ?? 'User';
+
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder:
                     (_) => ChatScreen(
+                      currentUserName: currentUserName,
                       personName: fullName,
                       currentUserId: currentUser!.uid,
                       otherUserId: widget.otherUserId!,
@@ -288,9 +389,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           backgroundColor: const Color(0xfffd8536),
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(12), // Match the provided style
           ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: 14),
         ),
         child: Text(
           isCurrentUser ? "EDIT PROFILE" : "MESSAGE",
@@ -307,21 +408,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
           () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => BadgesScreen(userId: currentUser!.uid),
+              builder:
+                  (_) => BadgesScreen(
+                    userId:
+                        widget.otherUserId ??
+                        currentUser!.uid, // Use correct userId
+                  ),
             ),
           ),
-      child: StreamBuilder<QuerySnapshot>(
-        stream:
+      child: FutureBuilder<QuerySnapshot>(
+        // Changed to FutureBuilder
+        future:
             FirebaseFirestore.instance
                 .collection('users')
-                .doc(currentUser!.uid)
+                .doc(
+                  widget.otherUserId ?? currentUser!.uid,
+                ) // Use correct userId
                 .collection('badges')
                 .orderBy('earnedAt', descending: true)
                 .limit(1)
-                .snapshots(),
+                .get(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const _InfoCard(
+              showArrow: true,
+              index: 0,
+              isBadge: true,
+              label: 'Loading badges...',
+            );
           }
 
           final badges = snapshot.data!.docs;
@@ -335,15 +449,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
 
           final badgeData = badges.first.data() as Map<String, dynamic>;
-          return StreamBuilder<DocumentSnapshot>(
-            stream:
+          return FutureBuilder<DocumentSnapshot>(
+            // Changed to FutureBuilder
+            future:
                 FirebaseFirestore.instance
                     .collection('badges')
                     .doc(badgeData['badgeId'])
-                    .snapshots(),
+                    .get(),
             builder: (context, badgeSnapshot) {
               if (!badgeSnapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+                return const _InfoCard(
+                  showArrow: true,
+                  index: 0,
+                  isBadge: true,
+                  label: 'Loading badge details...',
+                );
               }
 
               final badge = badgeSnapshot.data!.data() as Map<String, dynamic>?;
@@ -361,7 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 index: badge['index'] ?? 0,
                 isBadge: true,
                 label: badge['badgeName'] ?? 'Unknown Badge',
-                imageUrl: badge['badgeUrl'], // Add this line
+                imageUrl: badge['badgeUrl'],
               );
             },
           );
@@ -376,22 +496,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
       onSeeAll:
           () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const HistoryScreen()),
+            MaterialPageRoute(
+              builder:
+                  (_) => HistoryScreen(
+                    userId: widget.otherUserId ?? currentUser!.uid,
+                  ),
+            ),
           ),
       child: FutureBuilder<List<Map<String, dynamic>>>(
         future: _fetchRecentHistory(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const SizedBox(
+              height: 100,
+              child: Center(child: Text('Loading history...')),
+            );
           }
 
           final recentItems = snapshot.data!;
-
           if (recentItems.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No history yet'),
+            return const SizedBox(
+              height: 100,
+              child: Center(
+                child: Text(
+                  'No history yet',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                    height: 1.5,
+                  ),
+                ),
               ),
             );
           }

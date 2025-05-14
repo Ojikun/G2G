@@ -18,104 +18,162 @@ class ChatService {
   }) async {
     if (messageText.trim().isEmpty) return;
 
-    final chatId = getChatId(currentUserId, otherUserId);
-    final chatRef = _firestore.collection('chats').doc(chatId);
-    final messagesRef = chatRef.collection('messages');
+    try {
+      final chatId = getChatId(currentUserId, otherUserId);
+      final chatRef = _firestore.collection('chats').doc(chatId);
+      final messagesRef = chatRef.collection('messages');
+      final batch = _firestore.batch();
 
-    // Create or update chat document
-    final chatDoc = await chatRef.get();
-    if (!chatDoc.exists) {
-      await _createNewChat(
-        chatRef: chatRef,
-        currentUserId: currentUserId,
-        otherUserId: otherUserId,
-        messageText: messageText,
+      // Create message document first
+      final messageDoc = messagesRef.doc();
+      final messageData = {
+        'messageId': messageDoc.id,
+        'sender': currentUserId,
+        'senderName': senderName,
+        'text': messageText,
+        'timestamp': FieldValue.serverTimestamp(),
+        'readStatus': {currentUserId: true, otherUserId: false},
+        'edited': false,
+      };
+      batch.set(messageDoc, messageData);
+
+      // Check if chat exists and update accordingly
+      final chatDoc = await chatRef.get();
+      if (!chatDoc.exists) {
+        // Create new chat
+        batch.set(chatRef, {
+          'participants': [currentUserId, otherUserId],
+          'lastMessage': messageText,
+          'lastMessageTimestamp': FieldValue.serverTimestamp(),
+          'lastMessageSender': currentUserId,
+          'readStatus': {currentUserId: true, otherUserId: false},
+        });
+      } else {
+        // Update existing chat
+        batch.update(chatRef, {
+          'lastMessage': messageText,
+          'lastMessageTimestamp': FieldValue.serverTimestamp(),
+          'lastMessageSender': currentUserId,
+          'readStatus.$currentUserId': true,
+          'readStatus.$otherUserId': false,
+        });
+      }
+
+      // Commit all changes atomically
+      await batch.commit();
+
+      // Send notification after successful commit
+      await _sendNotification(
+        recipientId: otherUserId, // Correct - this is the receiver
+        senderId: currentUserId, // Correct - this is the sender
         senderName: senderName,
-      );
-    } else {
-      await _updateExistingChat(
-        chatRef: chatRef,
-        currentUserId: currentUserId,
-        otherUserId: otherUserId,
+        chatId: chatId,
         messageText: messageText,
       );
+    } catch (e) {
+      print('Error sending message: $e');
+      rethrow;
     }
-
-    // Add message
-    await messagesRef.add({
-      'sender': currentUserId,
-      'text': messageText,
-      'timestamp': FieldValue.serverTimestamp(),
-      'readStatus': {currentUserId: true, otherUserId: false},
-    });
-  }
-
-  static Future<void> _createNewChat({
-    required DocumentReference chatRef,
-    required String currentUserId,
-    required String otherUserId,
-    required String messageText,
-    required String senderName,
-  }) async {
-    await chatRef.set({
-      'participants': [currentUserId, otherUserId],
-      'lastMessage': messageText,
-      'lastMessageTimestamp': FieldValue.serverTimestamp(),
-      'lastMessageSender': currentUserId,
-      'readStatus': {currentUserId: true, otherUserId: false},
-    });
-
-    await _sendNotification(
-      otherUserId: otherUserId,
-      senderName: senderName,
-      chatId: chatRef.id,
-    );
-  }
-
-  static Future<void> _updateExistingChat({
-    required DocumentReference chatRef,
-    required String currentUserId,
-    required String otherUserId,
-    required String messageText,
-  }) async {
-    await chatRef.update({
-      'lastMessage': messageText,
-      'lastMessageTimestamp': FieldValue.serverTimestamp(),
-      'lastMessageSender': currentUserId,
-      'readStatus.$currentUserId': true,
-      'readStatus.$otherUserId': false,
-    });
   }
 
   static Future<void> _sendNotification({
-    required String otherUserId,
+    required String recipientId,
+    required String senderId,
     required String senderName,
     required String chatId,
+    required String messageText,
   }) async {
-    final otherUserDoc =
-        await _firestore.collection('users').doc(otherUserId).get();
-
-    final otherUserData = otherUserDoc.data() ?? {};
-    final otherUserToken = otherUserData['fcmToken'];
-
-    if (otherUserToken != null) {
-      await FCMServiceV1.sendPushNotification(
-        targetToken: otherUserToken,
-        title: 'New Message',
-        body: '$senderName sent you a message!',
+    try {
+      // Debug: Get current user's (sender's) token for comparison
+      final senderDoc =
+          await _firestore.collection('users').doc(senderId).get();
+      final senderToken = senderDoc.data()?['fcmToken'] as String?;
+      print(
+        'DEBUG: 👤 Current user (sender) FCM: ${senderToken?.substring(0, 10)}...',
       );
 
-      await _firestore
-          .collection('users')
-          .doc(otherUserId)
-          .collection('notifications')
-          .add({
-            'title': 'New Message',
-            'body': '$senderName sent you a message!',
-            'timestamp': FieldValue.serverTimestamp(),
-            'isRead': false,
-            'chatId': chatId,
+      // Debug: Get recipient's token
+      final recipientDoc =
+          await _firestore.collection('users').doc(recipientId).get();
+      final recipientToken = recipientDoc.data()?['fcmToken'] as String?;
+      print('DEBUG: 📱 Recipient FCM: ${recipientToken?.substring(0, 10)}...');
+
+      if (recipientToken == null || recipientToken.isEmpty) {
+        print('DEBUG: ❌ No FCM token found for recipient');
+        return;
+      }
+
+      // Compare tokens
+      if (senderToken == recipientToken) {
+        print(
+          'DEBUG: ⚠️ WARNING: Sender and recipient have the same FCM token!',
+        );
+        return;
+      }
+
+      // Double check token ownership
+      final verifyDoc =
+          await _firestore
+              .collection('users')
+              .where('fcmToken', isEqualTo: recipientToken)
+              .get();
+
+      if (verifyDoc.docs.isEmpty || verifyDoc.docs.first.id != recipientId) {
+        print('DEBUG: ❌ Token ownership verification failed');
+        return;
+      }
+
+      print('DEBUG: ✅ Verified token belongs to recipient: $recipientId');
+
+      await FCMServiceV1.sendPushNotification(
+        targetToken: recipientToken,
+        title: '$senderName sent you a message',
+        body:
+            messageText.length > 50
+                ? '${messageText.substring(0, 47)}...'
+                : messageText,
+        payload: {
+          'type': 'message',
+          'chatId': chatId,
+          'senderId': senderId,
+          'recipientId': recipientId,
+          'senderName': senderName,
+        },
+      );
+    } catch (e) {
+      print('DEBUG: ❌ Error in _sendNotification: $e');
+    }
+  }
+
+  static Future<void> updateFCMToken(String userId, String newToken) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Check if the token is already in use by another user
+      final existingTokenDocs =
+          await firestore
+              .collection('users')
+              .where('fcmToken', isEqualTo: newToken)
+              .get();
+
+      for (var doc in existingTokenDocs.docs) {
+        if (doc.id != userId) {
+          // Remove the token from other users
+          await firestore.collection('users').doc(doc.id).update({
+            'fcmToken': FieldValue.delete(),
           });
+        }
+      }
+
+      // Update the current user's token
+      await firestore.collection('users').doc(userId).update({
+        'fcmToken': newToken,
+        'lastTokenUpdate': FieldValue.serverTimestamp(),
+      });
+
+      print('DEBUG: ✅ FCM token updated for user: $userId');
+    } catch (e) {
+      print('DEBUG: ❌ Error updating FCM token: $e');
     }
   }
 }

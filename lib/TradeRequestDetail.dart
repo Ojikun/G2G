@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'services/fcm_service.dart';
 import 'services/badge_service.dart';
+import 'accepted_trade.dart';
 
 class TradeRequestDetailPage extends StatefulWidget {
   final String postId;
@@ -59,71 +60,105 @@ class _TradeRequestDetailPageState extends State<TradeRequestDetailPage> {
 
   Future<void> _handleAccept(BuildContext context) async {
     Navigator.of(context).pop(); // Close the dialog
-    setState(() => isTradeAccepted = true);
-
     try {
-      // Update the trade request status to "accepted"
-      await FirebaseFirestore.instance
-          .collection('trades')
-          .doc(widget.postId)
-          .collection('tradeRequests')
-          .doc(widget.requestId)
-          .update({'status': 'accepted'});
+      // Get current user details
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) throw Exception('No authenticated user');
 
-      // Fetch the user who sent the trade request
+      // Get the user who sent the trade request
       final offeredUserId = requestData?['uid'];
+      if (offeredUserId == null) throw Exception('Sender ID not found');
+
+      // Get sender's user data
       final userSnapshot =
           await FirebaseFirestore.instance
               .collection('users')
               .doc(offeredUserId)
               .get();
 
+      if (!userSnapshot.exists) {
+        print('DEBUG: User document not found for ID: $offeredUserId');
+        throw Exception('User not found');
+      }
+
       final fcmToken = userSnapshot.data()?['fcmToken'];
       final username = myPostData?['username'] ?? 'Someone';
+      print('DEBUG: FCM Token: ${fcmToken != null ? 'Found' : 'Not found'}');
+      // Update trade request status
+      await FirebaseFirestore.instance
+          .collection('trades')
+          .doc(widget.postId)
+          .collection('tradeRequests')
+          .doc(widget.requestId)
+          .update({
+            'status': 'accepted',
+            'acceptedAt': FieldValue.serverTimestamp(),
+          });
 
+      // Send notification to trade requester
       if (fcmToken != null) {
         // Send push notification
         await FCMServiceV1.sendPushNotification(
           targetToken: fcmToken,
           title: 'Trade Accepted',
           body: '$username accepted your trade request!',
+          payload: {
+            'type': 'trade_accepted',
+            'tradePostId': widget.postId,
+            'requestId': widget.requestId,
+            'senderId': currentUser.uid,
+            'senderName': username,
+          },
         );
 
-        // Add a notification entry in Firestore
+        // Add notification to Firestore
         await FirebaseFirestore.instance
             .collection('users')
             .doc(offeredUserId)
             .collection('notifications')
             .add({
+              'type': 'trade_accepted',
               'title': 'Trade Accepted',
               'body': '$username accepted your trade request!',
               'tradePostId': widget.postId,
               'requestId': widget.requestId,
+              'senderId': currentUser.uid,
+              'senderName': username,
               'timestamp': FieldValue.serverTimestamp(),
               'isRead': false,
             });
-
+        setState(() => isTradeAccepted = true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Trade Accepted and notification sent')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to send notification: No FCM token'),
-          ),
+          const SnackBar(content: Text('Trade Accepted successfully')),
         );
       }
 
       // Check and award badges
-      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-      if (currentUserId != null) {
-        await BadgeService.checkAndAwardBadges(context, currentUserId);
+      await BadgeService.checkAndAwardBadges(context, currentUser.uid);
+
+      // Navigate to accepted trade page
+      if (context.mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => AcceptedTradePage(
+                  tradePostId: widget.postId,
+                  requestId: widget.requestId,
+                ),
+          ),
+        );
       }
     } catch (e) {
       print('Error while accepting trade: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

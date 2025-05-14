@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'widgets/BadgeOverlay.dart';
 import 'Homepage.dart';
 
@@ -44,96 +45,89 @@ class _BadgesScreenState extends State<BadgesScreen> {
   }
 
   Future<Map<int, bool>> _checkUserAchievements() async {
-    final userDoc = FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.userId);
-    final badgesCollection = userDoc.collection('badges');
-
-    // Fetch counts using more efficient count() queries
-    final donationsCount =
-        await FirebaseFirestore.instance
-            .collection('donations')
-            .where('userId', isEqualTo: widget.userId)
-            .count()
-            .get();
-
-    final getsCount = await userDoc.collection('gets').count().get();
-
-    final tradesCount =
-        await FirebaseFirestore.instance
-            .collection('trades')
-            .where('uid', isEqualTo: widget.userId)
-            .where('status', isEqualTo: 'accepted')
-            .count()
-            .get();
-
     final Map<int, bool> achievements = {};
 
-    // Function to process badge achievement
-    Future<void> processBadge(
-      int index,
-      int currentCount,
-      int requiredCount,
-      String type,
-    ) async {
-      if (currentCount >= requiredCount) {
-        achievements[index] = true;
-        final badgeDoc =
-            await FirebaseFirestore.instance
+    try {
+      // Get user's earned badges from subcollection
+      final userBadges =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(widget.userId)
+              .collection('badges')
+              .get();
+
+      // Get all badges to check achievements
+      final allBadges =
+          await FirebaseFirestore.instance
+              .collection('badges')
+              .orderBy('index')
+              .get();
+
+      // Create a set of earned badge IDs for quick lookup
+      final earnedBadgeIds =
+          userBadges.docs.map((doc) => doc.data()['badgeId'] as String).toSet();
+
+      // Process achievements and show overlay for new badges
+      for (var badge in allBadges.docs) {
+        final data = badge.data();
+        final index = data['index'] as int;
+        final isEarned = earnedBadgeIds.contains(badge.id);
+        achievements[index] = isEarned;
+
+        // Only show badge overlay for current user
+        if (isEarned &&
+            widget.userId == FirebaseAuth.instance.currentUser?.uid) {
+          try {
+            // Check if badge was previously shown
+            final badgeRef = FirebaseFirestore.instance
+                .collection('users')
+                .doc(widget.userId)
                 .collection('badges')
-                .where('index', isEqualTo: index)
-                .get();
+                .where('badgeId', isEqualTo: badge.id)
+                .where('shown', isEqualTo: true)
+                .limit(1);
 
-        if (badgeDoc.docs.isNotEmpty) {
-          final badgeId = badgeDoc.docs.first.id;
-          final existingBadge =
-              await badgesCollection.where('badgeId', isEqualTo: badgeId).get();
+            final existingBadge = await badgeRef.get();
 
-          if (existingBadge.docs.isEmpty) {
-            final badgeData = badgeDoc.docs.first.data();
-            await badgesCollection.add({
-              'badgeId': badgeId,
-              'type': type,
-              'count': requiredCount,
-              'earnedAt': FieldValue.serverTimestamp(),
-            });
+            if (existingBadge.docs.isEmpty) {
+              // Update badge as shown
+              final badgeDocs =
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(widget.userId)
+                      .collection('badges')
+                      .where('badgeId', isEqualTo: badge.id)
+                      .limit(1)
+                      .get();
 
-            if (mounted && context.mounted) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder:
-                    (context) => BadgeOverlay(
-                      badgeName: badgeData['badgeName'] ?? 'New Badge',
-                      badgeUrl: badgeData['badgeUrl'] ?? '',
-                    ),
-              );
+              if (badgeDocs.docs.isNotEmpty) {
+                await badgeDocs.docs.first.reference.update({'shown': true});
+
+                if (mounted && context.mounted) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder:
+                        (context) => BadgeOverlay(
+                          badgeName: data['badgeName'] ?? 'New Badge',
+                          badgeUrl: data['badgeUrl'] ?? '',
+                        ),
+                  );
+                }
+              }
             }
+          } catch (e) {
+            print('Error updating badge shown status: $e');
+            // Continue processing other badges even if one fails
           }
         }
       }
+
+      return achievements;
+    } catch (e) {
+      print('Error checking achievements: $e');
+      return {};
     }
-
-    // Process all badge types
-    final counts = [
-      (donationsCount.count ?? 0, 'donation'),
-      (getsCount.count ?? 0, 'get'),
-      (tradesCount.count ?? 0, 'trade'),
-    ];
-
-    for (var count in counts) {
-      final thresholds = [1, 3, 5, 8, 10];
-      for (var i = 0; i < thresholds.length; i++) {
-        await processBadge(
-          i + (counts.indexOf(count) * 5),
-          count.$1,
-          thresholds[i],
-          count.$2,
-        );
-      }
-    }
-
-    return achievements;
   }
 
   @override
@@ -166,11 +160,27 @@ class _BadgesScreenState extends State<BadgesScreen> {
         elevation: 0,
       ),
       backgroundColor: Colors.grey[50],
+      // Replace the existing FutureBuilder in the build method
       body: FutureBuilder<List<dynamic>>(
         future: Future.wait([badgesFuture, achievementsFuture]),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const SizedBox();
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Loading badges...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xff238855),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                ],
+              ),
+            );
           }
 
           final badges = snapshot.data![0] as Map<int, Map<String, String>>;
@@ -201,6 +211,7 @@ class _BadgesScreenState extends State<BadgesScreen> {
 
   Widget _buildHeader() {
     return Container(
+      width: double.infinity, // Added to fill width
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -215,15 +226,22 @@ class _BadgesScreenState extends State<BadgesScreen> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center, // Changed to center
         children: [
-          const Text(
-            '🏆 Badge Collection',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xff238855),
-            ),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.emoji_events, color: Color(0xff238855), size: 24),
+              SizedBox(width: 8),
+              Text(
+                'Badge Collection',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xff238855),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
@@ -326,7 +344,7 @@ class _BadgesScreenState extends State<BadgesScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              color: isEarned ? const Color(0xff238855) : Colors.grey[300],
+              color: isEarned ? const Color(0xfffd8536) : Colors.grey[300],
               child: Text(
                 isEarned ? name : 'Locked',
                 textAlign: TextAlign.center,
@@ -347,9 +365,10 @@ class _BadgesScreenState extends State<BadgesScreen> {
 
   Widget _buildBadgeDetailsDialog(Map<String, String> badge) {
     return Dialog(
+      backgroundColor: Colors.white, // Set dialog background to white
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -358,6 +377,7 @@ class _BadgesScreenState extends State<BadgesScreen> {
               children: [
                 Column(
                   children: [
+                    // Badge Image
                     Container(
                       height: 120,
                       width: 120,
@@ -379,31 +399,41 @@ class _BadgesScreenState extends State<BadgesScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
+
+                    // Badge Name
                     Text(
                       badge['name'] ?? 'Badge',
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: Color(0xff238855),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      badge['description'] ?? '',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                        height: 1.5,
+                    const SizedBox(height: 12),
+
+                    // Badge Description
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        badge['description'] ?? 'No description available',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.grey[700],
+                          height: 1.5,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
+
+                    // Requirements Section
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.grey[100],
+                        color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[200]!, width: 1),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -411,7 +441,8 @@ class _BadgesScreenState extends State<BadgesScreen> {
                           Icon(Icons.stars, color: Colors.amber[700], size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            badge['requirements'] ?? '',
+                            badge['requirements'] ??
+                                'No requirements specified',
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey[700],
@@ -423,6 +454,8 @@ class _BadgesScreenState extends State<BadgesScreen> {
                     ),
                   ],
                 ),
+
+                // Close Button
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),

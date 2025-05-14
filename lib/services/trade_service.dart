@@ -113,6 +113,13 @@ class TradeService {
               targetToken: targetToken,
               title: 'New Trade Request',
               body: '$name wants to trade with you!',
+              payload: {
+                'type': 'trade_request',
+                'tradePostId': tradePostId,
+                'requestId': tradeRequestRef.id,
+                'senderId': currentUserId,
+                'senderName': name,
+              },
             );
           }
 
@@ -122,10 +129,13 @@ class TradeService {
               .doc(targetUserId)
               .collection('notifications')
               .add({
+                'type': 'trade_request', // Make sure this is set correctly
                 'title': 'New Trade Request',
                 'body': '$name wants to trade with you!',
-                'tradePostId': tradePostId, // Save tradePostId
-                'requestId': tradeRequestRef.id, // Save requestId
+                'tradePostId': tradePostId,
+                'requestId': tradeRequestRef.id,
+                'senderId': currentUserId,
+                'senderName': name,
                 'timestamp': FieldValue.serverTimestamp(),
                 'isRead': false,
               });

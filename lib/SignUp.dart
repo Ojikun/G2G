@@ -39,7 +39,8 @@ class _SignUpPageState extends State<SignUpPage> {
           );
 
       // Add default profile image URL
-      const String defaultProfileImage = 'assets/default_avatar.png';
+      const String defaultProfileImage =
+          'https://res.cloudinary.com/dtgvivwfa/image/upload/v1746955399/n7zjcnuzmkgpw8spdpjx.png';
 
       await FirebaseFirestore.instance
           .collection('users')

@@ -9,6 +9,7 @@ import 'services/chat_service.dart';
 import 'services/cloudinary_service.dart';
 
 class ChatScreen extends StatefulWidget {
+  final String currentUserName;
   final String personName;
   final String currentUserId;
   final String otherUserId;
@@ -16,6 +17,7 @@ class ChatScreen extends StatefulWidget {
 
   const ChatScreen({
     Key? key,
+    required this.currentUserName,
     required this.personName,
     required this.currentUserId,
     required this.otherUserId,
@@ -141,7 +143,7 @@ class _ChatScreenState extends State<ChatScreen> {
           currentUserId: widget.currentUserId,
           otherUserId: widget.otherUserId,
           messageText: messageText,
-          senderName: widget.personName,
+          senderName: widget.currentUserName,
         );
       }
 
@@ -261,14 +263,10 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           GestureDetector(
             onTap: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              } else {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ChatListScreen()),
-                );
-              }
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const ChatListScreen()),
+              );
             },
             child: const Icon(Icons.arrow_back_ios),
           ),
@@ -302,27 +300,58 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageList() {
+    final chatId = ChatService.getChatId(
+      widget.currentUserId,
+      widget.otherUserId,
+    );
+
     return Expanded(
       child: StreamBuilder<QuerySnapshot>(
         stream:
             FirebaseFirestore.instance
                 .collection('chats')
-                .doc(
-                  ChatService.getChatId(
-                    widget.currentUserId,
-                    widget.otherUserId,
-                  ),
-                )
+                .doc(chatId)
                 .collection('messages')
                 .orderBy('timestamp', descending: true)
                 .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (snapshot.hasError) {
+            print('Stream error: ${snapshot.error}');
             return const Center(
               child: Text(
-                'No messages yet.\nStart a conversation!',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.5),
+                'Unable to load messages',
+                style: TextStyle(color: Colors.grey),
+              ),
+            );
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xff238855)),
+              ),
+            );
+          }
+
+          final messages = snapshot.data!.docs;
+
+          if (messages.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'No messages yet\nStart a conversation!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -331,10 +360,10 @@ class _ChatScreenState extends State<ChatScreen> {
             controller: _scrollController,
             reverse: true,
             padding: const EdgeInsets.all(16),
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder:
-                (context, index) =>
-                    _buildMessageItem(snapshot.data!.docs[index], index),
+            itemCount: messages.length,
+            itemBuilder: (context, index) {
+              return _buildMessageItem(messages[index], index);
+            },
           );
         },
       ),

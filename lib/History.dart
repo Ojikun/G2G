@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Food.dart';
-import 'Homepage.dart';
 import 'accepted_trade.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({Key? key}) : super(key: key);
+  final String userId;
+  const HistoryScreen({
+    Key? key,
+    required this.userId, // Make userId required
+  }) : super(key: key);
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -17,29 +20,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (currentUserId == null) {
-      return const Center(child: Text('User not logged in.'));
-    }
+    final isCurrentUser =
+        widget.userId == FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => HomeScreen()),
-              );
-            }
-          },
+          onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'My History',
-          style: TextStyle(
+        title: Text(
+          isCurrentUser ? 'My History' : 'User History', // Dynamic title
+          style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 24,
@@ -56,31 +49,31 @@ class _HistoryScreenState extends State<HistoryScreen> {
           children: [
             _buildSectionHeader(
               title: 'Gives',
-              subtitle: 'Your donation history',
+              subtitle: 'Donation history',
               iconAsset: 'assets/give.png',
             ),
             const SizedBox(height: 10),
-            _buildGivesSection(currentUserId!),
+            _buildGivesSection(),
 
             const SizedBox(height: 20),
 
             _buildSectionHeader(
               title: 'Gets',
-              subtitle: 'Items you\'ve received',
+              subtitle: 'Received items',
               iconAsset: 'assets/get.png',
             ),
             const SizedBox(height: 10),
-            _buildGetsSection(currentUserId!),
+            _buildGetsSection(),
 
             const SizedBox(height: 20),
 
             _buildSectionHeader(
               title: 'Trades',
-              subtitle: 'Your trading history',
+              subtitle: 'Trading history',
               iconAsset: 'assets/trade.png',
             ),
             const SizedBox(height: 10),
-            _buildTradesSection(currentUserId!),
+            _buildTradesSection(),
 
             const SizedBox(height: 80),
           ],
@@ -192,12 +185,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildGivesSection(String userId) {
+  Widget _buildGivesSection() {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
               .collection('donations')
-              .where('userId', isEqualTo: userId)
+              .where('userId', isEqualTo: widget.userId) // Use passed userId
               .orderBy('timestamp', descending: true)
               .snapshots(),
       builder: (context, snapshot) {
@@ -211,7 +204,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           return Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.grey[100],
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Center(
@@ -250,12 +243,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildGetsSection(String userId) {
+  Widget _buildGetsSection() {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
               .collection('users')
-              .doc(userId)
+              .doc(widget.userId) // Use passed userId
               .collection('gets')
               .orderBy('timestamp', descending: true)
               .snapshots(),
@@ -326,12 +319,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildTradesSection(String userId) {
+  Widget _buildTradesSection() {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
               .collection('trades')
-              .where('uid', isEqualTo: userId)
+              .where('uid', isEqualTo: widget.userId) // Use passed userId
               .orderBy('timestamp', descending: true)
               .snapshots(),
       builder: (context, snapshot) {
@@ -345,7 +338,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           return Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.grey[100],
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Center(
@@ -369,24 +362,65 @@ class _HistoryScreenState extends State<HistoryScreen> {
               title: data['foodName'] ?? 'No Name',
               date: "Traded on: ${_formatDate(data['timestamp'])}",
               imageUrl: data['imageUrl'] ?? '',
-              onTap: () {
-                // Navigate to different screens based on trade status
-                if (data['status'] == 'accepted') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => AcceptedTradePage(
-                            tradePostId: doc.id,
-                            requestId: data['requestId'] ?? '',
-                          ),
-                    ),
+              onTap: () async {
+                try {
+                  final tradePostId = doc.id;
+
+                  // Get trade requests for this trade
+                  final tradeRequestsSnapshot =
+                      await FirebaseFirestore.instance
+                          .collection('trades')
+                          .doc(tradePostId)
+                          .collection('tradeRequests')
+                          .where('status', isEqualTo: 'accepted')
+                          .limit(1)
+                          .get();
+
+                  if (tradeRequestsSnapshot.docs.isEmpty) {
+                    print('DEBUG: No accepted trade request found');
+                    // Handle pending or other status
+                    final foodId = data['foodId'];
+                    if (foodId != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FoodScreen(foodId: foodId),
+                        ),
+                      );
+                    }
+                    return;
+                  }
+
+                  final requestDoc = tradeRequestsSnapshot.docs.first;
+                  final requestId = requestDoc.id;
+                  final requestData = requestDoc.data();
+
+                  print(
+                    'DEBUG: Trade tile clicked. Status: ${requestData['status']}',
                   );
-                } else if (data['status'] == 'pending') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FoodScreen(foodId: data['foodId']),
+                  print('DEBUG: Request ID: $requestId');
+
+                  if (requestData['status'] == 'accepted') {
+                    print('DEBUG: Navigating to AcceptedTradePage');
+                    print('DEBUG: Trade Post ID: $tradePostId');
+
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => AcceptedTradePage(
+                              tradePostId: tradePostId,
+                              requestId: requestId,
+                            ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  print('DEBUG: Error navigating to trade details: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: ${e.toString()}'),
+                      backgroundColor: Colors.red,
                     ),
                   );
                 }

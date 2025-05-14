@@ -175,7 +175,16 @@ class _BasketScreenState extends State<BasketScreen> {
                   isLoading
                       ? Center(child: CircularProgressIndicator())
                       : basketItems.isEmpty
-                      ? Center(child: Text('Your basket is empty.'))
+                      ? Center(
+                        child: Text(
+                          'Your basket is empty',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                            height: 1.5,
+                          ),
+                        ),
+                      )
                       : ListView.builder(
                         padding: EdgeInsets.symmetric(horizontal: 16),
                         itemCount: groupedItems.keys.length,
